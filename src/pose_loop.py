@@ -1,5 +1,7 @@
 import cv2
 import mediapipe as mp
+import csv
+
 
 video_path = "recordings/IMG_4207.mov"
 output_path = "outputs/pose_overlay.mp4"
@@ -30,6 +32,10 @@ mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
 all_landmarks = []
+
+ankle_file = open("outputs/ankles.csv", "w", newline="")
+writer = csv.writer(ankle_file)
+writer.writerow(["t", "ankle_l_x", "ankle_l_y", "ankle_r_x", "ankle_r_y"])
 
 with mp_pose.Pose() as pose:
 
@@ -76,10 +82,20 @@ with mp_pose.Pose() as pose:
                 }
 
             all_landmarks.append(frame_landmarks)
+            t = frame_number/fps
+            left = frame_landmarks[27]
+            right = frame_landmarks[28]
+            writer.writerow([t,
+                            left["x"]*frame.shape[1],
+                            left["y"]*frame.shape[0],
+                            right["x"]*frame.shape[1],
+                            right["y"]*frame.shape[0]])
+
 
         else:
 
             all_landmarks.append(None)
+            writer.writerow([frame_number/fps,"","","",""])
 
         out.write(frame)
 
@@ -90,6 +106,7 @@ with mp_pose.Pose() as pose:
 
 cap.release()
 out.release()
+ankle_file.close()
 
 print("Finished!")
 print("Frames processed:", frame_number)

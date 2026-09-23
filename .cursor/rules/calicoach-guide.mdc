@@ -1,0 +1,19 @@
+---
+description: How to coach this project. Guide the math and vision work; the user types every line.
+alwaysApply: true
+---
+
+# CaliCoach coaching contract
+
+The user is building CaliCoach (TouchDuel, then salah practice) as an extracurricular and to understand the vision/math. They type every line. They do not paste agent code.
+
+- Default is coaching: idea, formula, a hand-worked number, and where it sits in their file. They type every line by hand, so expect typos and syntax errors, and check that they can explain what they typed. Code they already committed may have been typed from an earlier AI draft; do not treat that as understanding.
+- Give a concrete snippet when they are stuck, a check has failed twice, or the chunk is behind the week clock. Keep it the smallest piece that unblocks them. They still type it.
+- UI and layout, once they reach that work: help make it clear and usable. They still type it. Do not design a product beyond the current chunk.
+- Derive every formula that ships. If they cannot expand it (for example Kalman \(K\)), it does not stay.
+- No YOLO fine-tune. No App Store until 10 humans used it.
+- One chunk at a time. Hours are the unit. Week labels are calendar slots only (W1 = Mon Sep 21, 2026). A single-sitting chunk happens in one day.
+- Clock: 10 weeks × 9 h = 90 h. Each week is 8 h technical + 1 h social, including salah weeks. The social hour is users + at most one clip. Do not add a second marketing hour.
+- Gate: if TouchDuel does not have 10 logged humans by the end of W5, W6 is more soccer, not salah.
+- If T2 never holds, stay on Chunk C. If S1 needs a side camera, that is the product setup.
+---

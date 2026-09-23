@@ -1,0 +1,35 @@
+---
+description: CaliCoach 10-week plan, milestones, and social hours. W1 starts Mon Sep 21, 2026. Done by Nov 30.
+alwaysApply: true
+---
+
+# Plan
+
+TouchDuel W1–W5: 40 h technical + 5 h social. Salah W6–W10: 40 h technical + 5 h social, only after T6. Reuse `angle()`, camera, and the in-frame reject. Do not restart the pose stack.
+
+## TouchDuel
+
+- **A (3 h, first half W1):** Own the pose loop. Landmarks dict every frame. `angle(a,b,c)` via dot product + `arccos`. CSV `t, ankle_l_xy, ankle_r_xy`. Done when a foot wave matches the CSV.
+- **B (5 h, rest of W1):** Ball as a measurement. HSV blob or stock sports-ball box, one they can explain. Centroid `(x,y)`. Matplotlib ball y vs time, 10 drop-juggles. **T1:** 20 s clip + `y(t)` graph. No count yet.
+- **C (8 h, W2, one day):** Juggle counter. Write the rule first: touch = local min of image y, prominence they measured, centroid within N px of ankle/knee, hysteresis so one bounce is one count. Overlay the integer. Film 20 attempts, hand-count vs app. **T2:** mean |error| ≤ 2, or write why (occlusion, color) and the next chunk is only that bug. Do not add a model.
+- **D (5 h, first ~60% of W3):** 1-D Kalman on ball y. State \([y, \dot y]\). They write predict/update. Plot raw vs filtered. A 3–8 frame dropout is bridged. They can state \(F,H,Q,R\) without the file. If not, keep the raw centroid and do not claim a filter. **T3:** one figure, raw + filtered + marked dropout.
+- **E (4 h, rest of W3):** Take-turns duel v0. Two names, 60 s each, two scores, winner printed. JSON append `{name, score, ts}`. No sockets. **T4:** 1 complete 1v1 in the log, no code edits mid-match.
+- **F (7 h, W4):** Survive other floors and light. Full body + ball in frame or reject. **T5:** 5 distinct names in `scores.json`. 3 people besides them get a plausible count on try 1 or 2.
+- **G (6 h, W5):** Ladder freeze. Sorted PB list. Elo only if they can write \(E=1/(1+10^{(R_b-R_a)/400})\) and update after a 60 s match. README: how to run. Stop features. **T6:** 10 distinct humans with a score. No T6 → no salah.
+
+Social 1 h × 5: W1 ask 3 people, no post. W2 one 15 s overlay clip, caption is the count. W3 book 2 testers for W4. W4 watch 3 people, write 3 failures. W5 the other 5 users, go to them with a ball.
+
+## Salah practice
+
+- **H (2 h, first quarter W6):** New folder. Strip ball/Kalman. Keep landmarks + `angle()`. Full-body gate. Banner says practice, not salah.
+- **I (6 h, rest of W6):** Standing / ruku / sujood / sitting from numbers measured on their body. 500 ms dwell. Label right ≥ 8/10 at side or 45°. **S1:** thresholds in a comment with how they were measured.
+- **J (8 h, W7):** One legal rakah path (their madhhab, their gender). Illegal skip → message, no silent recover. **S2:** green path + one forced fail, both recorded.
+- **K (6 h, first 75% W8):** One cue from one inequality. Missing wrists/ankles → “move back”, no pose name. **S3:** a second person finishes with camera-setup talk only.
+- **L (2 h rest of W8 + 6 h W9):** Other bodies. Recalibrate or one per-session hold. Still one madhhab. **S4:** 5 practice runs.
+- **M (6 h, W10):** Run instructions, privacy sentence, optional tap-to-play Fatiha file on the lesson screen only. **S5:** 10 practice completions. Stop.
+
+Social: W6 tell family/teacher it is practice, get 2 yes/no. W7 one labels GIF, text says practice only. W8 sit with the S3 person. W9 one weekend-school / revert / parent, family path if they refuse the camera. W10 remaining users. No ads.
+
+## Nov 30
+
+TouchDuel: Python window, 60 s take-turns, a count they can defend, 10 names in JSON. Salah: Python/web window, four poses, one legal path, practice banner, 10 completions. Recitation/duas wait.
