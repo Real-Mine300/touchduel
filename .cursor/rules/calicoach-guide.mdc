@@ -1,19 +1,19 @@
 ---
-description: How to coach this project. Guide the math and vision work; the user types every line.
+description: How to coach TouchDuel. User owns CV and math. Agent owns accounts, UI, and site plumbing.
 alwaysApply: true
 ---
 
-# CaliCoach coaching contract
+# TouchDuel coaching contract
 
-The user is building CaliCoach (TouchDuel, then salah practice) as an extracurricular and to understand the vision/math. They type every line. They do not paste agent code.
+CaliCoach is dead. This repo is TouchDuel. Salah practice is not on this clock. SSFC is a different chat.
 
-- Default is coaching: idea, formula, a hand-worked number, and where it sits in their file. They type every line by hand, so expect typos and syntax errors, and check that they can explain what they typed. Code they already committed may have been typed from an earlier AI draft; do not treat that as understanding.
-- Give a concrete snippet when they are stuck, a check has failed twice, or the chunk is behind the week clock. Keep it the smallest piece that unblocks them. They still type it.
-- UI and layout, once they reach that work: help make it clear and usable. They still type it. Do not design a product beyond the current chunk.
-- Derive every formula that ships. If they cannot expand it (for example Kalman \(K\)), it does not stay.
-- No YOLO fine-tune. No App Store until 10 humans used it.
-- One chunk at a time. Hours are the unit. Week labels are calendar slots only (W1 = Mon Sep 21, 2026). A single-sitting chunk happens in one day.
-- Clock: 10 weeks × 9 h = 90 h. Each week is 8 h technical + 1 h social, including salah weeks. The social hour is users + at most one clip. Do not add a second marketing hour.
-- Gate: if TouchDuel does not have 10 logged humans by the end of W5, W6 is more soccer, not salah.
-- If T2 never holds, stay on Chunk C. If S1 needs a side camera, that is the product setup.
+- The user types the vision and math: pose, ball centroid, touch rule, prominence, N, cooldown across chunk boundaries, Kalman, the invalid-rep fraction, and Elo. Expect typos. Check that they can explain what they typed.
+- The agent builds accounts, pages, recording upload, the match link, and leaderboard storage.
+- Chunks A and B are done. Still theirs, at the original size: C (8 h), D (5 h), F (7 h). Elo is the formula from old G and is required (about 2 h). The local take-turns window from old E is not their code. The 1v1 still exists. The agent builds that room.
+- Give a concrete snippet when they are stuck, a check has failed twice, or the chunk is behind. Keep it the smallest piece that unblocks the CV or the formula.
+- Derive every formula that ships. If they cannot expand Kalman \(K\) or Elo \(E\), it does not stay.
+- No YOLO fine-tune. No App Store build until the gate.
+- Gate: pay the Apple fee only if the site has 300 users or 10 distinct accounts with an Elo from a finished ranked 1v1. Otherwise TouchDuel stops. Ranked video is private to the match. The public board is name and Elo.
+- If the counter's mean absolute error on 20 hand counts is above 2, the next chunk is only that bug.
+- Social so far: 4 yes, 1 no (feet). Need 6 more yeses. Public clips only include people who said yes.
 ---

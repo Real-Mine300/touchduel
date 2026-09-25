@@ -4,8 +4,8 @@ import csv
 import matplotlib.pyplot as plt
 
 
-video_path = "recordings/IMG_4209.mov"
-output_path = "outputs/ball.csv"
+video_path = "recordings/IMG_4206.mov"
+output_path = "outputs/ball_overlay6.mp4"
 
 cap = cv2.VideoCapture(video_path)
 
@@ -27,10 +27,13 @@ model = YOLO("yolov8n.pt")
 
 frame_number = 0
 
-ball_file = open("outputs/ball.csv", "w", newline="")
+ball_file = open("outputs/ball6.csv", "w", newline="")
 writer = csv.writer(ball_file)
 writer.writerow(["t", "ball_x", "ball_y", "size_x", "size_y", "conf"])
 
+fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+
+out = cv2.VideoWriter(output_path, fourcc, fps, (height, width) )
 while True:
 
     success, frame = cap.read()
@@ -73,12 +76,18 @@ while True:
             confidence
         ])
 
+        cv2.rectangle(frame, (int(left), int(top)), (int(right), int(bottom)), (0, 255, 0), 4)
+        cv2.circle(frame, (int(center[0]), int(center[1])), 8, (0, 255, 0), -1)
+
         print(ball_pos)
     else:
         writer.writerow([t,"", "", "", "", ""])
 
+    out.write(frame)
+
     frame_number += 1
     print(t)
+
 
 ball_file.close()
 
@@ -95,9 +104,11 @@ with open("outputs/ball.csv") as f:
         else:
             ys.append(float(row["ball_y"]))
 
+out.release()
+
 
 plt.plot(ts, ys)
 plt.xlabel("t (s)")
-plt.xlabel("ball y (px)")
+plt.ylabel("ball y (px)")
 plt.savefig("outputs/ball_y.png")
 plt.show()
