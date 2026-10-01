@@ -1,8 +1,10 @@
+import os
 import cv2
 import mediapipe as mp
 
-video_path = "recordings/IMG_4207.mov"
-output_path = "outputs/first_frame_pose.jpg"
+video_path = "recordings/Rain_2.MOV"
+stem = os.path.splitext(os.path.basename(video_path))[0]
+output_path = f"outputs/first_frame_pose_{stem}.jpg"
 
 cap = cv2.VideoCapture(video_path)
 

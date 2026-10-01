@@ -2,6 +2,7 @@ import os
 import cv2
 import mediapipe as mp
 from sympy import true
+import numpy as np
 from ultralytics import YOLO
 import csv
 
@@ -60,8 +61,7 @@ with mp_pose.Pose() as pose:
 
         success, frame = cap.read()
 
-        if not success:
-            break
+        if not success: break
 
         if rotateIMG: frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
 
@@ -72,7 +72,6 @@ with mp_pose.Pose() as pose:
         ball_found = False
 
         if len(results) > 0 and results[0].boxes is not None:
-
             boxes = results[0].boxes
 
             ball_indices = []
@@ -270,3 +269,68 @@ print("Finished!")
 print("Frames processed:", frame_number)
 print("Output:", output_path)
 print("Proximity file:", proximity_file.name)
+
+with open(proximity_file.name, mode='r', newline='', encoding='utf-8') as file:
+    reader = csv.DictReader(file)
+    
+    data = {header: [] for header in reader.fieldnames}
+    for row in reader:
+        for header in reader.fieldnames:
+            data[header].append(row[header])
+
+
+t = np.array(data['t'])
+instep_left_x = np.array(data['instep_l_x'])
+instep_left_y = np.array(data['instep_l_y'])
+instep_right_x = np.array(data['instep_r_x'])
+instep_right_y = np.array(data['instep_r_y'])
+ball_x = np.array(data['ball_x'])
+ball_y = np.array(data['ball_y'])
+size_x = np.array(data['size_x'])
+size_y = np.array(data['size_y'])
+conf = np.array(data['conf'])
+proximity = np.array(data['proximity'])
+touch = np.array(data['touch'])
+
+# acccount for "" into nan
+instep_left_x = np.array([np.nan if v == "" else float(v) for v in data["instep_l_x"]], dtype=float)
+instep_left_y = np.array([np.nan if v == "" else float(v) for v in data["instep_l_y"]], dtype=float)
+instep_right_x = np.array([np.nan if v == "" else float(v) for v in data["instep_r_x"]], dtype=float)
+instep_right_y = np.array([np.nan if v == "" else float(v) for v in data["instep_r_y"]], dtype=float)
+ball_x = np.array([np.nan if v == "" else float(v) for v in data["ball_x"]], dtype=float)
+ball_y = np.array([np.nan if v == "" else float(v) for v in data["ball_y"]], dtype=float)
+size_x = np.array([np.nan if v == "" else float(v) for v in data["size_x"]], dtype=float)
+size_y = np.array([np.nan if v == "" else float(v) for v in data["size_y"]], dtype=float)
+conf = np.array([np.nan if v == "" else float(v) for v in data["conf"]], dtype=float)
+proximity = np.array([np.nan if v == "" else float(v) for v in data["proximity"]], dtype=float)
+touch = np.array([np.nan if v == "" else float(v) for v in data["touch"]], dtype=float)
+
+# smooth 
+smoothing_window = 3
+smoothed_instep_left_x = np.convolve(instep_left_x, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_instep_left_y = np.convolve(instep_left_y, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_instep_right_x = np.convolve(instep_right_x, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_instep_right_y = np.convolve(instep_right_y, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_ball_x = np.convolve(ball_x, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_ball_y = np.convolve(ball_y, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_size_x = np.convolve(size_x, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_size_y = np.convolve(size_y, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_conf = np.convolve(conf, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_proximity = np.convolve(proximity, np.ones(smoothing_window)/smoothing_window, mode='valid')
+
+# make it cartesian
+cartesian_instep_left_y = np.array([(height - 1) - smoothed_instep_left_y[i] for i in range(len(smoothed_instep_left_y))])
+cartesian_instep_right_y = np.array([(height - 1) - smoothed_instep_right_y[i] for i in range(len(smoothed_instep_right_y))])
+cartesian_ball_y = np.array([(height - 1) - smoothed_ball_y[i] for i in range(len(smoothed_ball_y))])
+
+#velocity
+dt = 1/fps
+velocity_instep_left_x = np.diff(smoothed_instep_left_x)/dt
+velocity_instep_left_y = np.diff(cartesian_instep_left_y)/dt
+velocity_instep_right_x = np.diff(smoothed_instep_right_x)/dt
+velocity_instep_right_y = np.diff(cartesian_instep_right_y)/dt
+velocity_ball_x = np.diff(smoothed_ball_x)/dt
+velocity_ball_y = np.diff(cartesian_ball_y)/dt
+
+#for time in t:
+

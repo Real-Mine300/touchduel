@@ -13,7 +13,7 @@ Apple's fee is paid only after 300 users or 10 distinct Elo accounts. Miss both 
 
 ## User chunks
 
-- **C (8 h):** Touch = peak of image \(y\), prominence they measured, centroid within N px of an ankle or knee, cooldown carried across 5 s chunks. Overlay the integer. 20 attempts, hand vs app. **T2:** mean absolute error ≤ 2, or the next chunk is only that bug.
+- **C (8 h):** Count on one camera. Keep the highest-confidence class-32 box. Drop a frame when the center or the box size jumps. A touch is a peak of image \(y\) (falling, then rising). After the peak, \(y\) must fall by at least the prominence they measured. The ball center must be within N px of an instep or a knee. Instep is \(0.6\) of the way from ankle (27, 28) to toe (31, 32). Knees are 25 and 26. Heels are not a contact. \(r\) is ball-box height divided by shin length on the near leg, knee to ankle. They measure \(r\) on a real kick and on a close-to-camera frame. A frame counts only when \(r\) is near the kick's \(r\). Meters from focal length, a size-5 diameter, or a typed height are not in C. Cooldown so one hold is one count, and that cooldown carries across 5 s chunks. Overlay the integer. 20 attempts, hand vs app. **T2:** mean absolute error ≤ 2, or the next chunk is only that bug.
 - **D (5 h):** Kalman on ball \(y\), state \([y, \dot y]\), or the raw centroid stays. They must state \(F,H,Q,R\) without the file. **T3:** raw, filtered, one marked dropout.
 - **F (7 h):** Other floors and light. Body or ball missing past the fraction they measure means the minute is invalid. **T5:** 3 people besides them get a plausible count on try 1 or 2.
 - **Elo (2 h):** They write \(E=1/(1+10^{(R_b-R_a)/400})\) and the update. **T4:** both new ratings from one 60 s result, on paper.
@@ -26,11 +26,14 @@ Record 60 s in the browser. Upload 5 s chunks. Run their counter. Hide the score
 
 ## Social
 
-- **S1:** 4 yes, 1 no. Ask 6 more. **Done when:** 10 yeses, including the friend in NZ.
-- **S2:** One 15 s clip the day a real count exists. Caption is the count. Only people who said yes. Link in the caption.
-- **S3:** Link to every yes. Ask 5 of them to repost.
-- **S4:** One clip a day after the link works. Track views toward 30,000. That is the 1% path to 300 users. Views before the link do not count.
-- **S5:** A time for each yes. **T6:** 10 Elo rows, or a list of who refused after a real invite.
+Friends seed it. The public drives it. Funnel: content, views, link, strangers, players, Elo. Views before the link do not count. Only people who said yes appear in a clip. The link goes in on T2 day, not before.
+
+- **S1:** 10 prospects, not 10 friends. Mix friends, school or soccer, and people outside that circle. Track yes, no, or invited. At the same time: a project profile, one name, one look, one sentence, a 15 s format, and the CTA “Try to beat me.” The link slot stays empty until T2.
+- **S2:** The day T2 exists, one 15 s clip. Caption is the count plus the working link. Only a confirmed yes is in the clip.
+- **S3:** The link to every yes. Five of them asked to repost. Start tracking clicks.
+- **S4:** One clip a day after the link works. Challenges, 1v1s, scores, fails, streaks, reactions. Stretch is 30,000 post-link views, the 1% path to 300 users.
+- **S5:** Offer a time to every interested person. Viewers become scheduled 1v1s, then players.
+- **T6:** 10 completed Elo rows, or a written refusal after a real invite.
 
 ## Pipeline
 

@@ -1,5 +1,4 @@
 import math
-
 def angle(a, b, c):
     u = (a[0] - b[0], a[1] - b[1])
     v = (c[0] - b[0], c[1] - b[1])

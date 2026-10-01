@@ -28,4 +28,9 @@ outputs/
 # Jupyter
 .ipynb_checkpoints/
 
-
+# Cursor
+.cursor/
+.cursorrules
+.cursor/
+.cursorrules
+.cursor/

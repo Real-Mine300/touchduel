@@ -7,7 +7,7 @@ alwaysApply: true
 
 CaliCoach is dead. This repo is TouchDuel. Salah practice is not on this clock. SSFC is a different chat.
 
-- The user types the vision and math: pose, ball centroid, touch rule, prominence, N, cooldown across chunk boundaries, Kalman, the invalid-rep fraction, and Elo. Expect typos. Check that they can explain what they typed.
+- The user types the vision and math: pose, ball centroid, the juggle count (track, image-\(y\) reversal, prominence, instep or knee, \(r\) = ball height / shin, cooldown across chunk boundaries), Kalman, the invalid-rep fraction, and Elo. Expect typos. Check that they can explain what they typed. The contact point is the instep, not the ankle. Knees count. Heels do not.
 - The agent builds accounts, pages, recording upload, the match link, and leaderboard storage.
 - Chunks A and B are done. Still theirs, at the original size: C (8 h), D (5 h), F (7 h). Elo is the formula from old G and is required (about 2 h). The local take-turns window from old E is not their code. The 1v1 still exists. The agent builds that room.
 - Give a concrete snippet when they are stuck, a check has failed twice, or the chunk is behind. Keep it the smallest piece that unblocks the CV or the formula.
@@ -15,5 +15,5 @@ CaliCoach is dead. This repo is TouchDuel. Salah practice is not on this clock. 
 - No YOLO fine-tune. No App Store build until the gate.
 - Gate: pay the Apple fee only if the site has 300 users or 10 distinct accounts with an Elo from a finished ranked 1v1. Otherwise TouchDuel stops. Ranked video is private to the match. The public board is name and Elo.
 - If the counter's mean absolute error on 20 hand counts is above 2, the next chunk is only that bug.
-- Social so far: 4 yes, 1 no (feet). Need 6 more yeses. Public clips only include people who said yes.
+- Social is S1–T6 in the plan. Friends seed it. The public drives it. No link in a caption before T2. Public clips only include people who said yes. Known so far: 4 in-person yeses, 1 no (feet), and about 10 more who asked to 1v1 after an event. Names are not written down yet.
 ---
