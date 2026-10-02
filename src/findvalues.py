@@ -24,7 +24,22 @@ print("Original res:", width, "x", height)
 
 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
+if rotateIMG:
+    out = cv2.VideoWriter(
+        output_path,
+        fourcc,
+        fps,
+        (height, width)
+    )
+else:
+    out = cv2.VideoWriter(
+        output_path,
+        fourcc,
+        fps,
+        (width, height)
+    )
 
+print("Writer opened:", out.isOpened())
 
 model = YOLO("yolov8n.pt")
 
@@ -111,57 +126,32 @@ idle = False
 pending = False
 inflight = False
 Carry = False
+hieghest = 0
+hieghesadst = 0
+hieghessadst = 0
 for frame in range(len(t) - 2 ):
-    # debug/preconditioning
     if (t[frame] > 12.7 and t[frame] < 13) or (t[frame] > 20 and t[frame] < 20.3):
         print("ball: ", velocity_ball_y[frame])
         print("left: ", velocity_instep_left_y[frame])
         print("right: ", velocity_instep_right_y[frame])
     if t[frame] < 0.5: continue
-
-    # teleport
     D = smoothed_size_y[frame]
     if D is np.nan or conf[frame] < 0.2:
         continue
-    k_jump_y = abs(cartesian_ball_y[frame] - cartesian_ball_y[frame - 1]) / D
-    k_jump_x = abs(smoothed_ball_x[frame] - smoothed_ball_x[frame - 1]) / D 
-    k_jump_d = abs(D - smoothed_size_y[frame - 1]) / D
-    k_jump_pos_thresh = 0.65
-    k_jump_d_thresh = 0.2 # found .15 but 
-    if k_jump_x > k_jump_pos_thresh or k_jump_y > k_jump_pos_thresh or k_jump_d > k_jump_d_thresh:
+    k_jump_y = abs(cartesian_ball_y[frame] - cartesian_ball_y[frame - 1])/D
+    k_jump_x = abs(smoothed_ball_x[frame] - smoothed_ball_x[frame - 1])/D
+    k_jump_d = abs(D - smoothed_size_y[frame - 1]) /D
+    print(t[frame])
+    print(k_jump_x)
+    print(k_jump_y)
+    print(k_jump_d)
+    if k_jump_y >hieghest:
+        hieghest = k_jump_y
+    if k_jump_x >hieghesadst:
+        hieghesadst = k_jump_x
+    if k_jump_d >hieghessadst:
+        hieghessadst = k_jump_d
 
-        continue
-
-    #cooldown
-    if (t[frame] - last_juggle_time) < 0.3:
-        continue
-
-    # proximity
-    y_check = (np.minimum((cartesian_ball_y[frame] - cartesian_instep_left_y[frame]), (cartesian_ball_y[frame] - cartesian_instep_right_y[frame])) < smoothed_size_y[frame]*6/5) 
-    x_check = (np.minimum(abs(smoothed_ball_x[frame] - smoothed_instep_left_x[frame]), abs(smoothed_ball_x[frame] - smoothed_instep_right_x[frame])) < smoothed_size_x[frame]*4/5)
-    if not (y_check or x_check):
-        continue
-    
-    #change of vel
-    if not (velocity_ball_y[frame - 1] <= 0 and velocity_ball_y[frame + 1] > 0):
-        continue
-
-    # foot pos
-    lookback_frames = int(0.2 * fps)
-    foot_stroke_r = cartesian_instep_right_y[frame] - np.min(cartesian_instep_right_y[frame - lookback_frames : frame])
-    foot_stroke_l = cartesian_instep_left_y[frame] - np.min(cartesian_instep_left_y[frame - lookback_frames : frame])
-    
-    if np.maximum(foot_stroke_r, foot_stroke_l) < 0.5 * smoothed_size_y[frame]:
-        continue
-
-    forward_frames = int(0.4 * fps)
-
-    ball_apex = np.max(cartesian_ball_y[frame : frame + forward_frames]) - cartesian_ball_y[frame]
-    if ball_apex < 1.5 * smoothed_size_y[frame]:
-        continue
-
-    juggle_count += 1
-    last_juggle_time = t[frame]
-    print(f"Juggle at time {t[frame]}")
-
-print(juggle_count)
+print(hieghest)
+print(hieghesadst)
+print(hieghessadst)
