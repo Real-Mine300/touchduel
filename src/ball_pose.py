@@ -249,7 +249,7 @@ with mp_pose.Pose() as pose:
         cv2.putText(
             frame,
             f"Time: {t:.2f}s",
-            (20, 40),
+            (200, 900),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
             (255, 255, 255),
