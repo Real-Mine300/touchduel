@@ -2,6 +2,7 @@ import os
 import cv2
 import mediapipe as mp
 import numpy as np
+from torch import accelerator
 from ultralytics import YOLO
 import csv
 
@@ -62,6 +63,10 @@ ankle_left_x = np.array(data['ankle_l_x'])
 ankle_left_y = np.array(data['ankle_l_y'])
 ankle_right_x = np.array(data['ankle_r_x'])
 ankle_right_y = np.array(data['ankle_r_y'])
+wrist_left_x = np.array(data['wrist_l_x'])
+wrist_left_y = np.array(data['wrist_l_y'])
+wrist_right_x = np.array(data['wrist_r_x'])
+wrist_right_y = np.array(data['wrist_r_y'])
 ball_x = np.array(data['ball_x'])
 ball_y = np.array(data['ball_y'])
 size_x = np.array(data['size_x'])
@@ -69,30 +74,36 @@ size_y = np.array(data['size_y'])
 conf = np.array(data['conf'])
 proximity_instep = np.array(data['proximity_instep'])
 proximity_knee = np.array(data['proximity_knee'])
+proximity_wrist = np.array(data['proximity_wrist'])
 touch = np.array(data['touch'])
 
 t = np.array([float(v) for v in data["t"]], dtype=float)
 
 # acccount for "" into nan
-instep_left_x = np.array([np.nan if v == "" else float(v) for v in data["instep_l_x"]], dtype=float)
-instep_left_y = np.array([np.nan if v == "" else float(v) for v in data["instep_l_y"]], dtype=float)
-instep_right_x = np.array([np.nan if v == "" else float(v) for v in data["instep_r_x"]], dtype=float)
-instep_right_y = np.array([np.nan if v == "" else float(v) for v in data["instep_r_y"]], dtype=float)
-knee_left_x = np.array([np.nan if v == "" else float(v) for v in data["knee_l_x"]], dtype=float)
-knee_left_y = np.array([np.nan if v == "" else float(v) for v in data["knee_l_y"]], dtype=float)
-knee_right_x = np.array([np.nan if v == "" else float(v) for v in data["knee_r_x"]], dtype=float)
-knee_right_y = np.array([np.nan if v == "" else float(v) for v in data["knee_r_y"]], dtype=float)
-ankle_left_x = np.array([np.nan if v == "" else float(v) for v in data["ankle_l_x"]], dtype=float)
-ankle_left_y = np.array([np.nan if v == "" else float(v) for v in data["ankle_l_y"]], dtype=float)
-ankle_right_x = np.array([np.nan if v == "" else float(v) for v in data["ankle_r_x"]], dtype=float)
-ankle_right_y = np.array([np.nan if v == "" else float(v) for v in data["ankle_r_y"]], dtype=float)
-ball_x = np.array([np.nan if v == "" else float(v) for v in data["ball_x"]], dtype=float)
-ball_y = np.array([np.nan if v == "" else float(v) for v in data["ball_y"]], dtype=float)
-size_x = np.array([np.nan if v == "" else float(v) for v in data["size_x"]], dtype=float)
-size_y = np.array([np.nan if v == "" else float(v) for v in data["size_y"]], dtype=float)
-conf = np.array([np.nan if v == "" else float(v) for v in data["conf"]], dtype=float)
-proximity_instep = np.array([np.nan if v == "" else float(v) for v in data["proximity_instep"]], dtype=float)
-proximity_knee = np.array([np.nan if v == "" else float(v) for v in data["proximity_knee"]], dtype=float)
+instep_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["instep_l_x"]], dtype=float)
+instep_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["instep_l_y"]], dtype=float)
+instep_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["instep_r_x"]], dtype=float)
+instep_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["instep_r_y"]], dtype=float)
+knee_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["knee_l_x"]], dtype=float)
+knee_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["knee_l_y"]], dtype=float)
+knee_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["knee_r_x"]], dtype=float)
+knee_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["knee_r_y"]], dtype=float)
+ankle_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["ankle_l_x"]], dtype=float)
+ankle_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["ankle_l_y"]], dtype=float)
+ankle_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["ankle_r_x"]], dtype=float)
+ankle_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["ankle_r_y"]], dtype=float)
+wrist_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["wrist_l_x"]], dtype=float)
+wrist_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["wrist_l_y"]], dtype=float)
+wrist_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["wrist_r_x"]], dtype=float)
+wrist_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["wrist_r_y"]], dtype=float)
+ball_x = np.array([np.nan if v in ("", None) else float(v) for v in data["ball_x"]], dtype=float)
+ball_y = np.array([np.nan if v in ("", None) else float(v) for v in data["ball_y"]], dtype=float)
+size_x = np.array([np.nan if v in ("", None) else float(v) for v in data["size_x"]], dtype=float)
+size_y = np.array([np.nan if v in ("", None) else float(v) for v in data["size_y"]], dtype=float)
+conf = np.array([np.nan if v in ("", None) else float(v) for v in data["conf"]], dtype=float)
+proximity_instep = np.array([np.nan if v in ("", None) else float(v) for v in data["proximity_instep"]], dtype=float)
+proximity_knee = np.array([np.nan if v in ("", None) else float(v) for v in data["proximity_knee"]], dtype=float)
+proximity_wrist = np.array([np.nan if v in ("", None) else float(v) for v in data["proximity_wrist"]], dtype=float)
 #$touch = np.array([np.nan if v == "" else bool(int(v)) for v in data["touch"]], dtype=float)
 
 # smooth 
@@ -109,6 +120,10 @@ smoothed_ankle_left_x = np.convolve(ankle_left_x, np.ones(smoothing_window)/smoo
 smoothed_ankle_left_y = np.convolve(ankle_left_y, np.ones(smoothing_window)/smoothing_window, mode='valid')
 smoothed_ankle_right_x = np.convolve(ankle_right_x, np.ones(smoothing_window)/smoothing_window, mode='valid')
 smoothed_ankle_right_y = np.convolve(ankle_right_y, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_wrist_left_x = np.convolve(wrist_left_x, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_wrist_left_y = np.convolve(wrist_left_y, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_wrist_right_x = np.convolve(wrist_right_x, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_wrist_right_y = np.convolve(wrist_right_y, np.ones(smoothing_window)/smoothing_window, mode='valid')
 smoothed_ball_x = np.convolve(ball_x, np.ones(smoothing_window)/smoothing_window, mode='valid')
 smoothed_ball_y = np.convolve(ball_y, np.ones(smoothing_window)/smoothing_window, mode='valid')
 smoothed_size_x = np.convolve(size_x, np.ones(smoothing_window)/smoothing_window, mode='valid')
@@ -116,6 +131,7 @@ smoothed_size_y = np.convolve(size_y, np.ones(smoothing_window)/smoothing_window
 smoothed_conf = np.convolve(conf, np.ones(smoothing_window)/smoothing_window, mode='valid')
 smoothed_proximity_instep = np.convolve(proximity_instep, np.ones(smoothing_window)/smoothing_window, mode='valid')
 smoothed_proximity_knee = np.convolve(proximity_knee, np.ones(smoothing_window)/smoothing_window, mode='valid')
+smoothed_proximity_wrist = np.convolve(proximity_wrist, np.ones(smoothing_window)/smoothing_window, mode='valid')
 
 # make it cartesian
 cartesian_instep_left_y = np.array([(height - 1) - smoothed_instep_left_y[i] for i in range(len(smoothed_instep_left_y))])
@@ -124,6 +140,8 @@ cartesian_knee_left_y = np.array([(height - 1) - smoothed_knee_left_y[i] for i i
 cartesian_knee_right_y = np.array([(height - 1) - smoothed_knee_right_y[i] for i in range(len(smoothed_knee_right_y))])
 cartesian_ankle_left_y = np.array([(height - 1) - smoothed_ankle_left_y[i] for i in range(len(smoothed_ankle_left_y))])
 cartesian_ankle_right_y = np.array([(height - 1) - smoothed_ankle_right_y[i] for i in range(len(smoothed_ankle_right_y))])
+cartesian_wrist_left_y = np.array([(height - 1) - smoothed_wrist_left_y[i] for i in range(len(smoothed_wrist_left_y))])
+cartesian_wrist_right_y = np.array([(height - 1) - smoothed_wrist_right_y[i] for i in range(len(smoothed_wrist_right_y))])
 cartesian_ball_y = np.array([(height - 1) - smoothed_ball_y[i] for i in range(len(smoothed_ball_y))])
 
 #velocity
@@ -140,6 +158,10 @@ velocity_ankle_left_x = np.diff(smoothed_ankle_left_x)/dt
 velocity_ankle_left_y = np.diff(cartesian_ankle_left_y)/dt
 velocity_ankle_right_x = np.diff(smoothed_ankle_right_x)/dt
 velocity_ankle_right_y = np.diff(cartesian_ankle_right_y)/dt
+velocity_wrist_left_x = np.diff(smoothed_wrist_left_x)/dt
+velocity_wrist_left_y = np.diff(cartesian_wrist_left_y)/dt
+velocity_wrist_right_x = np.diff(smoothed_wrist_right_x)/dt
+velocity_wrist_right_y = np.diff(cartesian_wrist_right_y)/dt
 velocity_ball_x = np.diff(smoothed_ball_x)/dt
 velocity_ball_y = np.diff(cartesian_ball_y)/dt
 
@@ -150,14 +172,19 @@ idle = True
 pending = False
 inflight = False
 Carry = False
+juggle_streak = 0
 for frame in range(len(t) - 2 ):
     # debug/preconditioning
-    if t[frame] < 19.6: continue
-    if t[frame] > 30.4: continue
+    if frame == 0: continue
+    #if t[frame] < 19.6: continue
+    #if t[frame] > 30.4: continue
+
+    # ref acceleration
+    ref_acc = -47
 
     # teleport
     D = smoothed_size_y[frame]
-    if D is np.nan or conf[frame] < 0.2:
+    if np.isnan(D) or conf[frame] < 0.2:
         continue
     k_jump_y = abs(cartesian_ball_y[frame] - cartesian_ball_y[frame - 1]) / D
     k_jump_x = abs(smoothed_ball_x[frame] - smoothed_ball_x[frame - 1]) / D 
@@ -167,12 +194,20 @@ for frame in range(len(t) - 2 ):
     if k_jump_x > k_jump_pos_thresh or k_jump_y > k_jump_pos_thresh or k_jump_d > k_jump_d_thresh:
         velocity_ball_y[frame] = np.nan
         velocity_ball_y[frame - 1] = np.nan
+        juggle_streak = 0
         continue
 
     #cooldown - currently 0.3, but change of number maybe needed.
-    if (t[frame] - last_juggle_time) < 0.3:
+    if (t[frame] - last_juggle_time) < 0.29:
         continue
     
+    # above ground check
+    above_thresh = 0.3
+    above_window = slice(frame - max(1, round(above_thresh * fps)), frame)
+    above = np.nanmin(cartesian_ball_y[above_window]) - np.nanmin(np.array([cartesian_ankle_left_y[above_window], cartesian_ankle_right_y[above_window]]))
+    if not above > 0:
+        juggle_streak = 0
+        continue
     
     # neg change of vel
     if not (velocity_ball_y[frame - 1] <= 0 and velocity_ball_y[frame + 1] > 0):
@@ -190,10 +225,11 @@ for frame in range(len(t) - 2 ):
     vy_window = slice(frame - max(1, round(0.1 * fps)), frame + max(1, round(0.1 * fps)))
     vly_instep = np.nanmax(velocity_instep_left_y[vy_window] / smoothed_size_y[vy_window])
     vry_instep = np.nanmax(velocity_instep_right_y[vy_window] / smoothed_size_y[vy_window])
-    vel_l_check = (vly_instep > 2)
-    vel_r_check = (vry_instep > 2)
+    vel_l_check = (vly_instep > 1.8)
+    vel_r_check = (vry_instep > 1.8)
     
     if not (vel_l_check or vel_r_check):
+        juggle_streak = 0
         continue
 
     # ball leaving chec
@@ -217,6 +253,7 @@ for frame in range(len(t) - 2 ):
             ball_higher.append(0)
     
     if not ball_higher.count(1) / len(ball_higher) > 0.70:
+        juggle_streak = 0
         continue
     
     # depth (r)
@@ -241,6 +278,7 @@ for frame in range(len(t) - 2 ):
     r = D/shin
 
     if r > 1.2:
+        juggle_streak = 0
         continue
 
     # ball apex
@@ -257,10 +295,37 @@ for frame in range(len(t) - 2 ):
     if not climb > 0.45:
         continue
 
-    # 
+    # hand proximity check
+    hand_window = slice(frame - max(1, round(0.1 * fps)), frame + max(1, round(0.6 * fps)))
+    hand = []
+    hand_near = False
+    hand_touch = False
+    hand_grab = False
+    for i in range(frame - max(1, round(0.1 * fps)), frame + max(1, round(0.6 * fps))):
+        if not np.isfinite(smoothed_proximity_wrist[i]):
+            continue
+        if smoothed_proximity_wrist[i] / smoothed_size_y[i] > 0.5:
+            continue
+        if smoothed_proximity_wrist[i] / smoothed_size_y[i] > smoothed_proximity_knee[i] / smoothed_size_y[i] or smoothed_proximity_wrist[i] / smoothed_size_y[i] > smoothed_proximity_instep[i] / smoothed_size_y[i]:
+            continue
+        hand_near = True
+        if not abs(velocity_wrist_left_y[i] / smoothed_size_y[i]) > 0 or abs(velocity_wrist_right_y[i] / smoothed_size_y[i]) > 0:
+            continue
+        hand_near = True
+        if not ((abs(velocity_wrist_left_y[i] / smoothed_size_y[i]) + abs(velocity_ball_y[i] / smoothed_size_y[i]))/ abs(velocity_ball_y[i] / smoothed_size_y[i]) > 1.2 
+            or (abs(velocity_wrist_right_y[i] / smoothed_size_y[i]) + abs(velocity_ball_y[i] / smoothed_size_y[i]))/ abs(velocity_ball_y[i] / smoothed_size_y[i]) > 1.2):
+            continue
+        hand_touch = True
+        break
+    if hand_touch or hand_grab:
+        juggle_streak = 0
+        continue
+
+    # TODO: add knees, head. Also add distance 
     
     juggle_count += 1
+    juggle_streak += 1
     last_juggle_time = t[frame]
-    print(f"Juggle at time {t[frame]}, climb is {climb:.4f}")
+    print(f"Juggle at time {t[frame]:.2f}, streak is {juggle_streak}")
 
 print(juggle_count)

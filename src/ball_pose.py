@@ -52,7 +52,7 @@ frame_number = 0
 
 
 writer = csv.writer(proximity_file)
-writer.writerow(["t", "instep_l_x", "instep_l_y", "instep_r_x", "instep_r_y", "knee_l_x", "knee_l_y", "knee_r_x", "knee_r_y", "ankle_l_x", "ankle_l_y", "ankle_r_x", "ankle_r_y", "ball_x", "ball_y", "size_x", "size_y", "conf", "proximity_instep", "proximity_knee", "touch"])
+writer.writerow(["t", "instep_l_x", "instep_l_y", "instep_r_x", "instep_r_y", "knee_l_x", "knee_l_y", "knee_r_x", "knee_r_y", "ankle_l_x", "ankle_l_y", "ankle_r_x", "ankle_r_y", "wrist_l_x", "wrist_l_y", "wrist_r_x", "wrist_r_y", "ball_x", "ball_y", "size_x", "size_y", "conf", "proximity_instep", "proximity_knee", "proximity_wrist", "touch"])
 
 with mp_pose.Pose() as pose:
 
@@ -165,6 +165,15 @@ with mp_pose.Pose() as pose:
             knee_right_x = int(knee_right.x * frame.shape[1])
             knee_right_y = int(knee_right.y * frame.shape[0])
 
+            wrist_left = pose_results.pose_landmarks.landmark[15]
+            wrist_right = pose_results.pose_landmarks.landmark[16]
+
+            wrist_left_x = int(wrist_left.x * frame.shape[1])
+            wrist_left_y = int(wrist_left.y * frame.shape[0])
+
+            wrist_right_x = int(wrist_right.x * frame.shape[1])
+            wrist_right_y = int(wrist_right.y * frame.shape[0])
+
             instep_left_x = ankle_left_x + (toe_left_x - ankle_left_x) * 0.6
             instep_left_y = ankle_left_y + (toe_left_y - ankle_left_y) * 0.6
             instep_right_x = ankle_right_x + (toe_right_x - ankle_right_x) * 0.6
@@ -219,6 +228,22 @@ with mp_pose.Pose() as pose:
 
             cv2.circle(
                 frame,
+                (wrist_left_x, wrist_left_y),
+                8,
+                (10, 100, 255),
+                -1
+            )
+
+            cv2.circle(
+                frame,
+                (wrist_right_x, wrist_right_y),
+                8,
+                (10, 100, 255),
+                -1
+            )
+
+            cv2.circle(
+                frame,
                 (int(instep_left_x), int(instep_left_y)),
                 8,
                 (157, 255, 255),
@@ -245,6 +270,10 @@ with mp_pose.Pose() as pose:
             knee_left_y = None
             knee_right_x = None
             knee_right_y = None
+            wrist_left_x = None
+            wrist_left_y = None
+            wrist_right_x = None
+            wrist_right_y = None
 
         cv2.putText(
             frame,
@@ -270,7 +299,10 @@ with mp_pose.Pose() as pose:
             proximity_knee_right_y = abs(knee_right_y - center_y)
             proximity_knee_left_x = abs(knee_left_x - center_x)
             proximity_knee_left_y = abs(knee_left_y - center_y)
-
+            proximity_wrist_left_x = abs(wrist_left_x - center_x)
+            proximity_wrist_left_y = abs(wrist_left_y - center_y)
+            proximity_wrist_right_x = abs(wrist_right_x - center_x)
+            proximity_wrist_right_y = abs(wrist_right_y - center_y)
         else:
             proximity = False
             touch = False
@@ -284,22 +316,28 @@ with mp_pose.Pose() as pose:
                 (proximity_knee_left_x ** 2 + proximity_knee_left_y ** 2) ** 0.5,
                 (proximity_knee_right_x ** 2 + proximity_knee_right_y ** 2) ** 0.5,
             )
+            proximity_wrist = min(
+                (proximity_wrist_left_x ** 2 + proximity_wrist_left_y ** 2) ** 0.5,
+                (proximity_wrist_right_x ** 2 + proximity_wrist_right_y ** 2) ** 0.5,
+            )
             writer.writerow([
                 t, instep_left_x, instep_left_y, instep_right_x, instep_right_y,
                 knee_left_x, knee_left_y, knee_right_x, knee_right_y,
                 ankle_left_x, ankle_left_y, ankle_right_x, ankle_right_y,
+                wrist_left_x, wrist_left_y, wrist_right_x, wrist_right_y,
                 center_x, center_y, size_x, size_y, float(boxes.conf[best_index]),
-                proximity, proximity_knee, touch,
+                proximity, proximity_knee, proximity_wrist, touch,
             ])
         elif not ball_found and pose_results.pose_landmarks:
             writer.writerow([t, instep_left_x, instep_left_y, instep_right_x,
             instep_right_y, knee_left_x, knee_left_y, knee_right_x, knee_right_y,
             ankle_left_x, ankle_left_y, ankle_right_x, ankle_right_y, 
-            None, None, None, None, None, None, None, None, None, None])
+            wrist_left_x, wrist_left_y, wrist_right_x, wrist_right_y,
+            None, None, None, None, None, None, None])
         elif ball_found and not pose_results.pose_landmarks:
-            writer.writerow([t, None, None, None, None, None, None, None, None, None, None, None, None, center_x, center_y, size_x, size_y, float(boxes.conf[best_index]), None, None, None])
+            writer.writerow([t, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, center_x, center_y, size_x, size_y, float(boxes.conf[best_index]), None, None, None, None])
         else:
-            writer.writerow([t, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None])
+            writer.writerow([t, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None])
         
         
         out.write(frame)
