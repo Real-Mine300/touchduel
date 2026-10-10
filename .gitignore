@@ -5,6 +5,8 @@ __pycache__/
 # Virtual environment
 .venv/
 
+Guide.md
+
 # macOS
 .DS_Store
 

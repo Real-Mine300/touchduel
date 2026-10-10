@@ -26,8 +26,8 @@ already_upright = cap.get(cv2.CAP_PROP_ORIENTATION_AUTO) == 1
 
 quarter_turn = {
     90: cv2.ROTATE_90_CLOCKWISE,
-    90: cv2.ROTATE_180,
-    90: cv2.ROTATE_90_COUNTERCLOCKWISE
+    180: cv2.ROTATE_180,
+    270: cv2.ROTATE_90_COUNTERCLOCKWISE
 }
 
 if not already_upright and roll in (90, 270):
@@ -44,7 +44,10 @@ frame_number = 0
 
 
 writer = csv.writer(proximity_file)
-writer.writerow(["t", "instep_l_x", "instep_l_y", "instep_r_x", "instep_r_y", "knee_l_x", "knee_l_y", "knee_r_x", "knee_r_y", "ankle_l_x", "ankle_l_y", "ankle_r_x", "ankle_r_y", "wrist_l_x", "wrist_l_y", "wrist_r_x", "wrist_r_y", "ball_x", "ball_y", "size_x", "size_y", "conf", "proximity_instep", "proximity_knee", "proximity_wrist", "touch"])
+writer.writerow(["t", "instep_l_x", "instep_l_y", "instep_r_x", "instep_r_y",
+ "knee_l_x", "knee_l_y", "knee_r_x", "knee_r_y", "ankle_l_x", "ankle_l_y", "ankle_r_x", "ankle_r_y",
+ "wrist_l_x", "wrist_l_y", "wrist_r_x", "wrist_r_y", "shoulders_l_x", "shoulders_l_y", "shoulders_r_x", "shoulders_r_y", "hips_l_x", "hips_l_y", "hips_r_x", "hips_r_y",
+  "ball_x", "ball_y", "size_x", "size_y", "conf", "proximity", "proximity_knee", "proximity_wrist", "touch"])
 
 prev_gray = None
 prev_pts = None
@@ -58,6 +61,14 @@ lk_params = dict(
 
 with mp_pose.Pose() as pose:
 
+    memory_ball_h = None
+    memory_ball_x = None
+    memory_ball_y = None
+    memory_shoulders_left_x = None
+    memory_body_width = None
+    memory_center_body_x = None
+    memory_center_body_y = None
+
     while True:
 
         success, frame = cap.read()
@@ -67,7 +78,7 @@ with mp_pose.Pose() as pose:
 
         if not already_upright and roll in quarter_turn:
             frame = cv2.rotate(frame, quarter_turn[roll])
-        t = frame_number / fps
+        t = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
 
         results = model(frame, verbose=False)
 
@@ -110,16 +121,56 @@ with mp_pose.Pose() as pose:
                     ball_indices,
                     key=lambda i: float(boxes.conf[i])
                 )
-
-                left, top, right, bottom = (
-                    boxes.xyxy[best_index].tolist()
-                )
-
-                center_x = (left + right) / 2
-                center_y = (top + bottom) / 2
-
-
-                ball_found = True
+                if memory_ball_y is None:
+                    left, top, right, bottom = (
+                        boxes.xyxy[best_index].tolist()
+                    )
+                    center_x = (left + right) / 2
+                    center_y = (top + bottom) / 2
+                    memory_ball_h = bottom - top
+                    memory_ball_y = center_y
+                    memory_ball_x = center_x
+                    ball_found = True
+                else:
+                    passed_boxes = []
+                    for bal in ball_indices:
+                        left, top, right, bottom = boxes.xyxy[bal].tolist()
+                        center_x = (left + right) / 2
+                        center_y = (top + bottom) / 2
+                        height_check = memory_ball_h / (bottom - top)
+                        distance_traveled = ((abs(memory_ball_x - center_x) ** 2 + abs(memory_ball_y - center_y) ** 2) ** 0.5) / memory_ball_h
+                        if distance_traveled <= 2 and .5 <= height_check <= 2:
+                            ball_found = True
+                            passed_boxes.append(bal)
+                    if len(passed_boxes) < 1:
+                        ball_found = False
+                        center_x = None
+                        center_y = None
+                        boxes = None
+                        best_index = None
+                        left = None
+                        top = None
+                        right = None
+                        bottom = None
+                    else:
+                        lowest_diff = None
+                        lowest_diff_ind = None
+                        for bal in passed_boxes:
+                            left, top, right, bottom = boxes.xyxy[bal].tolist()
+                            center_x = (left + right) / 2
+                            center_y = (top + bottom) / 2
+                            distance_traveled = ((abs(memory_ball_x - center_x) ** 2 + abs(memory_ball_y - center_y) ** 2) ** 0.5) / memory_ball_h
+                            if lowest_diff is None or distance_traveled < lowest_diff:
+                                lowest_diff = distance_traveled
+                                lowest_diff_ind = bal
+                        best_index = lowest_diff_ind
+                        left, top, right, bottom = boxes.xyxy[best_index].tolist()
+                        center_x = (left + right) / 2
+                        center_y = (top + bottom) / 2
+                        memory_ball_h = bottom - top
+                        memory_ball_y = center_y
+                        memory_ball_x = center_x
+                        ball_found = True
             else:
                 ball_found = False
                 center_x = None
@@ -145,48 +196,99 @@ with mp_pose.Pose() as pose:
                 pose_results.pose_landmarks,
                 mp_pose.POSE_CONNECTIONS
             )
+            
+            shoulders_left = pose_results.pose_landmarks.landmark[11]
+            shoulders_right = pose_results.pose_landmarks.landmark[12]
+            shoulders_left_x = int(shoulders_left.x * frame.shape[1])
+            shoulders_left_y = int(shoulders_left.y * frame.shape[0])
+            shoulders_right_x = int(shoulders_right.x * frame.shape[1])
+            shoulders_right_y = int(shoulders_right.y * frame.shape[0])
 
-            ankle_left = pose_results.pose_landmarks.landmark[27]
-            ankle_right = pose_results.pose_landmarks.landmark[28]
+            hips_left = pose_results.pose_landmarks.landmark[23]
+            hips_right = pose_results.pose_landmarks.landmark[24]
+            hips_left_x = int(hips_left.x * frame.shape[1])
+            hips_left_y = int(hips_left.y * frame.shape[0])
+            hips_right_x = int(hips_right.x * frame.shape[1])
+            hips_right_y = int(hips_right.y * frame.shape[0])
+            
+            jump_between_x = None
+            jump_between_y = None
+            if (shoulders_right_x and shoulders_left_x):
+                center_body_x = abs(shoulders_left_x + shoulders_right_x) / 2
+                center_body_y = abs(shoulders_left_y + shoulders_right_y) / 2
+                if not memory_center_body_x:
+                    memory_center_body_x = center_body_x
+                    memory_center_body_y = center_body_y
+                else:
+                    jump_between_x = abs(center_body_x - memory_center_body_x)
+                    jump_between_y = abs(center_body_y - memory_center_body_y)
+            else:
+                center_body_x = None
+                center_body_y = None
+            jump_thresh = 6.7
+            if memory_ball_h and jump_between_x:
+                pose_check = (jump_between_x ** 2 + jump_between_y ** 2) ** 0.5 / memory_ball_h > jump_thresh
+            elif not center_body_x:
+                pose_check = False
+            else:
+                pose_check = False
+            if not pose_check:
+                ankle_left = pose_results.pose_landmarks.landmark[27]
+                ankle_right = pose_results.pose_landmarks.landmark[28]
+                ankle_left_x = int(ankle_left.x * frame.shape[1])
+                ankle_left_y = int(ankle_left.y * frame.shape[0])
+                ankle_right_x = int(ankle_right.x * frame.shape[1])
+                ankle_right_y = int(ankle_right.y * frame.shape[0])
+                
+                toe_left = pose_results.pose_landmarks.landmark[31]
+                toe_right = pose_results.pose_landmarks.landmark[32]
+                toe_left_x = int(toe_left.x * frame.shape[1])
+                toe_left_y = int(toe_left.y * frame.shape[0])
+                toe_right_x = int(toe_right.x * frame.shape[1])
+                toe_right_y = int(toe_right.y * frame.shape[0])
 
-            ankle_left_x = int(ankle_left.x * frame.shape[1])
-            ankle_left_y = int(ankle_left.y * frame.shape[0])
+                knee_left = pose_results.pose_landmarks.landmark[25]
+                knee_right = pose_results.pose_landmarks.landmark[26]
+                knee_left_x = int(knee_left.x * frame.shape[1])
+                knee_left_y = int(knee_left.y * frame.shape[0])
+                knee_right_x = int(knee_right.x * frame.shape[1])
+                knee_right_y = int(knee_right.y * frame.shape[0])
 
-            ankle_right_x = int(ankle_right.x * frame.shape[1])
-            ankle_right_y = int(ankle_right.y * frame.shape[0])
+                wrist_left = pose_results.pose_landmarks.landmark[15]
+                wrist_right = pose_results.pose_landmarks.landmark[16]
+                wrist_left_x = int(wrist_left.x * frame.shape[1])
+                wrist_left_y = int(wrist_left.y * frame.shape[0])
+                wrist_right_x = int(wrist_right.x * frame.shape[1])
+                wrist_right_y = int(wrist_right.y * frame.shape[0])
 
-            toe_left = pose_results.pose_landmarks.landmark[31]
-            toe_right = pose_results.pose_landmarks.landmark[32]
+                instep_left_x = ankle_left_x + (toe_left_x - ankle_left_x) * 0.6
+                instep_left_y = ankle_left_y + (toe_left_y - ankle_left_y) * 0.6
+                instep_right_x = ankle_right_x + (toe_right_x - ankle_right_x) * 0.6
+                instep_right_y = ankle_right_y + (toe_right_y - ankle_right_y) * 0.6
 
-            toe_left_x = int(toe_left.x * frame.shape[1])
-            toe_left_y = int(toe_left.y * frame.shape[0])
-
-            toe_right_x = int(toe_right.x * frame.shape[1])
-            toe_right_y = int(toe_right.y * frame.shape[0])
-
-            knee_left = pose_results.pose_landmarks.landmark[25]
-            knee_right = pose_results.pose_landmarks.landmark[26]
-
-            knee_left_x = int(knee_left.x * frame.shape[1])
-            knee_left_y = int(knee_left.y * frame.shape[0])
-
-            knee_right_x = int(knee_right.x * frame.shape[1])
-            knee_right_y = int(knee_right.y * frame.shape[0])
-
-            wrist_left = pose_results.pose_landmarks.landmark[15]
-            wrist_right = pose_results.pose_landmarks.landmark[16]
-
-            wrist_left_x = int(wrist_left.x * frame.shape[1])
-            wrist_left_y = int(wrist_left.y * frame.shape[0])
-
-            wrist_right_x = int(wrist_right.x * frame.shape[1])
-            wrist_right_y = int(wrist_right.y * frame.shape[0])
-
-            instep_left_x = ankle_left_x + (toe_left_x - ankle_left_x) * 0.6
-            instep_left_y = ankle_left_y + (toe_left_y - ankle_left_y) * 0.6
-            instep_right_x = ankle_right_x + (toe_right_x - ankle_right_x) * 0.6
-            instep_right_y = ankle_right_y + (toe_right_y - ankle_right_y) * 0.6
-
+                memory_center_body_x = center_body_x
+                memory_center_body_y = center_body_y
+            else:
+                ankle_left_x = None
+                ankle_left_y = None
+                ankle_right_x = None
+                ankle_right_y = None
+                toe_left_x = None
+                toe_left_y = None
+                toe_right_x = None
+                toe_right_y = None
+                knee_left_x = None
+                knee_left_y = None
+                knee_right_x = None
+                knee_right_y = None
+                wrist_left_x = None
+                wrist_left_y = None
+                wrist_right_x = None
+                wrist_right_y = None
+                instep_left_x = None
+                instep_left_y = None
+                instep_right_x = None
+                instep_right_y = None
         else:
             instep_left_x = None
             instep_left_y = None
@@ -204,47 +306,71 @@ with mp_pose.Pose() as pose:
             wrist_left_y = None
             wrist_right_x = None
             wrist_right_y = None
-
+            shoulders_left_x = None
+            shoulders_left_y = None
+            shoulders_right_x = None
+            shoulders_right_y = None
+            hips_left_x = None
+            hips_left_y = None
+            hips_right_x = None
+            hips_right_y = None
+            center_body_x = None
+            center_body_y = None
         if ball_found and pose_results.pose_landmarks:
-            proximity_right_x = abs(instep_right_x - center_x)
-            proximity_right_y = abs(instep_right_y - center_y)
-            proximity_left_x = abs(instep_left_x - center_x)
-            proximity_left_y = abs(instep_left_y - center_y)
-            size_y = bottom - top
-            size_x = right - left
-            touch_right = proximity_right_x <= size_x and proximity_right_y <= size_y
-            touch_left = proximity_left_x <= size_x and proximity_left_y <= size_y
-            touch = touch_right or touch_left
-            proximity_knee_right_x = abs(knee_right_x - center_x)
-            proximity_knee_right_y = abs(knee_right_y - center_y)
-            proximity_knee_left_x = abs(knee_left_x - center_x)
-            proximity_knee_left_y = abs(knee_left_y - center_y)
-            proximity_wrist_left_x = abs(wrist_left_x - center_x)
-            proximity_wrist_left_y = abs(wrist_left_y - center_y)
-            proximity_wrist_right_x = abs(wrist_right_x - center_x)
-            proximity_wrist_right_y = abs(wrist_right_y - center_y)
+            if (instep_left_x and center_body_x):
+                proximity_right_x = abs(instep_right_x - center_x)
+                proximity_right_y = abs(instep_right_y - center_y)
+                proximity_left_x = abs(instep_left_x - center_x)
+                proximity_left_y = abs(instep_left_y - center_y)
+                proximity_shoulders_left_x = abs(shoulders_left_x - center_x)
+                proximity_shoulders_left_y = abs(shoulders_left_y - center_y)
+                proximity_shoulders_right_x = abs(shoulders_right_x - center_x)
+                proximity_shoulders_right_y = abs(shoulders_right_y - center_y)
+                proximity_hips_left_x = abs(hips_left_x - center_x)
+                proximity_hips_left_y = abs(hips_left_y - center_y)
+                proximity_hips_right_x = abs(hips_right_x - center_x)
+                proximity_hips_right_y = abs(hips_right_y - center_y)
+                proximity_knee_right_x = abs(knee_right_x - center_x)
+                proximity_knee_right_y = abs(knee_right_y - center_y)
+                proximity_knee_left_x = abs(knee_left_x - center_x)
+                proximity_knee_left_y = abs(knee_left_y - center_y)
+                proximity_wrist_left_x = abs(wrist_left_x - center_x)
+                proximity_wrist_left_y = abs(wrist_left_y - center_y)
+                proximity_wrist_right_x = abs(wrist_right_x - center_x)
+                proximity_wrist_right_y = abs(wrist_right_y - center_y)
+                size_y = bottom - top
+                size_x = right - left
+                touch_right = proximity_right_x <= size_x and proximity_right_y <= size_y
+                touch_left = proximity_left_x <= size_x and proximity_left_y <= size_y
+                touch = touch_right or touch_left
+            else:
+                proximity = False
+                touch = False
         else:
             proximity = False
             touch = False
 
         if ball_found and pose_results.pose_landmarks:
-            proximity = min(
-                (proximity_left_x ** 2 + proximity_left_y ** 2) ** 0.5,
-                (proximity_right_x ** 2 + proximity_right_y ** 2) ** 0.5,
-            )
-            proximity_knee = min(
-                (proximity_knee_left_x ** 2 + proximity_knee_left_y ** 2) ** 0.5,
-                (proximity_knee_right_x ** 2 + proximity_knee_right_y ** 2) ** 0.5,
-            )
-            proximity_wrist = min(
-                (proximity_wrist_left_x ** 2 + proximity_wrist_left_y ** 2) ** 0.5,
-                (proximity_wrist_right_x ** 2 + proximity_wrist_right_y ** 2) ** 0.5,
-            )
+            if center_body_x and instep_left_x:
+                proximity = min(
+                    (proximity_left_x ** 2 + proximity_left_y ** 2) ** 0.5,
+                    (proximity_right_x ** 2 + proximity_right_y ** 2) ** 0.5,
+                )
+                proximity_knee = min(
+                    (proximity_knee_left_x ** 2 + proximity_knee_left_y ** 2) ** 0.5,
+                    (proximity_knee_right_x ** 2 + proximity_knee_right_y ** 2) ** 0.5,
+                )
+                proximity_wrist = min(
+                    (proximity_wrist_left_x ** 2 + proximity_wrist_left_y ** 2) ** 0.5,
+                    (proximity_wrist_right_x ** 2 + proximity_wrist_right_y ** 2) ** 0.5,
+                )
             writer.writerow([
                 t, instep_left_x, instep_left_y, instep_right_x, instep_right_y,
                 knee_left_x, knee_left_y, knee_right_x, knee_right_y,
                 ankle_left_x, ankle_left_y, ankle_right_x, ankle_right_y,
                 wrist_left_x, wrist_left_y, wrist_right_x, wrist_right_y,
+                shoulders_left_x, shoulders_left_y, shoulders_right_x, shoulders_right_y,
+                hips_left_x, hips_left_y, hips_right_x, hips_right_y,
                 center_x, center_y, size_x, size_y, float(boxes.conf[best_index]),
                 proximity, proximity_knee, proximity_wrist, touch,
             ])
@@ -253,11 +379,13 @@ with mp_pose.Pose() as pose:
             instep_right_y, knee_left_x, knee_left_y, knee_right_x, knee_right_y,
             ankle_left_x, ankle_left_y, ankle_right_x, ankle_right_y, 
             wrist_left_x, wrist_left_y, wrist_right_x, wrist_right_y,
+            shoulders_left_x, shoulders_left_y, shoulders_right_x, shoulders_right_y,
+            hips_left_x, hips_left_y, hips_right_x, hips_right_y,
             None, None, None, None, None, None, None])
         elif ball_found and not pose_results.pose_landmarks:
-            writer.writerow([t, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, center_x, center_y, size_x, size_y, float(boxes.conf[best_index]), None, None, None, None])
+            writer.writerow([t, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, center_x, center_y, size_x, size_y, float(boxes.conf[best_index]), None, None, None, None])
         else:
-            writer.writerow([t, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None])
+            writer.writerow([t, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None])
         
         
 
@@ -403,7 +531,7 @@ cartesian_wrist_right_y = np.array([(height - 1) - smoothed_wrist_right_y[i] for
 cartesian_ball_y = np.array([(height - 1) - smoothed_ball_y[i] for i in range(len(smoothed_ball_y))])
 
 #velocity
-dt = 1/fps
+dt = np.diff(t[1:-1])
 velocity_instep_left_x = np.diff(smoothed_instep_left_x)/dt
 velocity_instep_left_y = np.diff(cartesian_instep_left_y)/dt
 velocity_instep_right_x = np.diff(smoothed_instep_right_x)/dt
@@ -613,6 +741,10 @@ print("Writer opened:", out.isOpened())
 
 with mp_pose.Pose() as pose:
     jugglecooloff = 0
+
+    memory_ball_h = None
+    memory_ball_y = None
+    memory_ball_x = None
     while True:
 
         success, frame = cap.read()
@@ -623,7 +755,7 @@ with mp_pose.Pose() as pose:
         if not already_upright and roll in quarter_turn:
             frame = cv2.rotate(frame, quarter_turn[roll])
 
-        t = frame_number / fps
+        t = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
 
         results = model(frame, verbose=False)
 
@@ -660,31 +792,56 @@ with mp_pose.Pose() as pose:
                     ball_indices,
                     key=lambda i: float(boxes.conf[i])
                 )
-
-                left, top, right, bottom = (
-                    boxes.xyxy[best_index].tolist()
-                )
-
-                center_x = (left + right) / 2
-                center_y = (top + bottom) / 2
-
-                cv2.rectangle(
-                    frame,
-                    (int(left), int(top)),
-                    (int(right), int(bottom)),
-                    color,
-                    4
-                )
-
-                cv2.circle(
-                    frame,
-                    (int(center_x), int(center_y)),
-                    8,
-                    color,
-                    -1
-                )
-
-                ball_found = True
+                if memory_ball_y is None:
+                    left, top, right, bottom = (
+                        boxes.xyxy[best_index].tolist()
+                    )
+                    center_x = (left + right) / 2
+                    center_y = (top + bottom) / 2
+                    memory_ball_h = bottom - top
+                    memory_ball_y = center_y
+                    memory_ball_x = center_x
+                    ball_found = True
+                else:
+                    passed_boxes = []
+                    for bal in ball_indices:
+                        left, top, right, bottom = boxes.xyxy[bal].tolist()
+                        center_x = (left + right) / 2
+                        center_y = (top + bottom) / 2
+                        height_check = memory_ball_h / (bottom - top)
+                        distance_traveled = ((abs(memory_ball_x - center_x) ** 2 + abs(memory_ball_y - center_y) ** 2) ** 0.5) / memory_ball_h
+                        if distance_traveled <= 2 and .5 <= height_check <= 2:
+                            ball_found = True
+                            passed_boxes.append(bal)
+                    if len(passed_boxes) < 1:
+                        ball_found = False
+                        center_x = None
+                        center_y = None
+                        boxes = None
+                        best_index = None
+                        left = None
+                        top = None
+                        right = None
+                        bottom = None
+                    else:
+                        lowest_diff = None
+                        lowest_diff_ind = None
+                        for bal in passed_boxes:
+                            left, top, right, bottom = boxes.xyxy[bal].tolist()
+                            center_x = (left + right) / 2
+                            center_y = (top + bottom) / 2
+                            distance_traveled = ((abs(memory_ball_x - center_x) ** 2 + abs(memory_ball_y - center_y) ** 2) ** 0.5) / memory_ball_h
+                            if lowest_diff is None or distance_traveled < lowest_diff:
+                                lowest_diff = distance_traveled
+                                lowest_diff_ind = bal
+                        best_index = lowest_diff_ind
+                        left, top, right, bottom = boxes.xyxy[best_index].tolist()
+                        center_x = (left + right) / 2
+                        center_y = (top + bottom) / 2
+                        memory_ball_h = bottom - top
+                        memory_ball_y = center_y
+                        memory_ball_x = center_x
+                        ball_found = True
             else:
                 ball_found = False
                 center_x = None
@@ -889,8 +1046,6 @@ with mp_pose.Pose() as pose:
         else:
             proximity = False
             touch = False
-
-        
         
         out.write(frame)
 
