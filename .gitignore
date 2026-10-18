@@ -19,6 +19,9 @@ data/processed/
 data/logs/
 outputs/
 
+# jobs
+web/jobs
+
 # IDE
 .vscode/
 .idea/
