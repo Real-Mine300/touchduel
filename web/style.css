@@ -1,0 +1,130 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #f4f2ee;
+  color: #1c1c1c;
+  font-family: "Source Sans 3", "Segoe UI", sans-serif;
+  font-size: 18px;
+}
+
+main {
+  max-width: 640px;
+  margin: 48px auto;
+  padding: 0 20px 64px;
+}
+
+h1 {
+  font-size: 32px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.sub {
+  margin: 0 0 24px;
+  color: #555;
+}
+
+.file {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.file input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.file span,
+button,
+.server input {
+  font: inherit;
+}
+
+.file span,
+button {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid #1c1c1c;
+  background: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  color: #999;
+  border-color: #ccc;
+  cursor: default;
+}
+
+#progress { margin-top: 28px; }
+
+.track {
+  height: 16px;
+  background: #ddd9d2;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#fill {
+  height: 100%;
+  width: 0%;
+  background: #2c6e4f;
+  border-radius: 8px;
+}
+
+#status {
+  margin: 8px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+#error {
+  color: #8d2a2a;
+}
+
+video {
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  max-height: 70vh;
+  margin-top: 24px;
+  background: #111;
+}
+
+#download {
+  display: inline-block;
+  margin-top: 10px;
+  color: #1c1c1c;
+}
+
+table {
+  width: 100%;
+  margin-top: 28px;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid #ddd9d2;
+}
+
+th { font-weight: 600; }
+
+.server {
+  display: block;
+  margin-top: 40px;
+  color: #666;
+  font-size: 15px;
+}
+
+.server input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+}

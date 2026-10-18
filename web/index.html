@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Touchduel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>Touchduel</h1>
+    <p class="sub">Upload a juggling video.</p>
+
+    <label class="file">
+      <input id="file" type="file" accept="video/*">
+      <span id="filename">Choose a video</span>
+    </label>
+    <button id="go" type="button" disabled>Run</button>
+
+    <section id="progress" hidden>
+      <div class="track"><div id="fill"></div></div>
+      <p id="status">0%</p>
+    </section>
+
+    <p id="error" hidden></p>
+    <video id="player" controls playsinline hidden></video>
+    <a id="download" hidden>Download overlay video</a>
+
+    <table id="table" hidden>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Time</th>
+          <th>Part</th>
+          <th>Streak</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <label class="server">
+      Processing server
+      <input id="api" type="text" spellcheck="false" placeholder="blank if this page is already on the server">
+    </label>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
