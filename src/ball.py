@@ -1,15 +1,11 @@
-import os
 import cv2
 from ultralytics import YOLO
 import csv
 import matplotlib.pyplot as plt
 
 
-video_path = "recordings/Rain_1.MOV"
-stem = os.path.splitext(os.path.basename(video_path))[0]
-output_path = f"outputs/ball_overlay_{stem}.mp4"
-csv_path = f"outputs/ball_{stem}.csv"
-plot_path = f"outputs/ball_y_{stem}.png"
+video_path = "recordings/IMG_4206.mov"
+output_path = "outputs/ball_overlay6.mp4"
 
 cap = cv2.VideoCapture(video_path)
 
@@ -31,7 +27,7 @@ model = YOLO("yolov8n.pt")
 
 frame_number = 0
 
-ball_file = open(csv_path, "w", newline="")
+ball_file = open("outputs/ball6.csv", "w", newline="")
 writer = csv.writer(ball_file)
 writer.writerow(["t", "ball_x", "ball_y", "size_x", "size_y", "conf"])
 
@@ -100,7 +96,7 @@ print("Output: ", output_path)
 ts = []
 ys = []
 
-with open(csv_path) as f:
+with open("outputs/ball.csv") as f:
     for row in csv.DictReader(f):
         ts.append(float(row["t"]))
         if row["ball_y"] == "":
@@ -114,5 +110,5 @@ out.release()
 plt.plot(ts, ys)
 plt.xlabel("t (s)")
 plt.ylabel("ball y (px)")
-plt.savefig(plot_path)
+plt.savefig("outputs/ball_y.png")
 plt.show()
