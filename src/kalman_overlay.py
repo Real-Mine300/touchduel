@@ -838,8 +838,8 @@ for frame in range(len(t) - 2 ):
                         juggle_count += 1 # temp count for ease
                         juggles.append(frame + 1)
                         streaks.append(juggle_streak)
-                        print(f"shin length left: {shin_length_left[frame]/D:.2f} right: {shin_length_right[frame]/D:.2f}")
-                        print(f" Time: {t[frame]:.2f}  corner y: {corner_y} label: {label}, juggle streak: {juggle_streak}")
+                    print(f"shin length left: {shin_length_left[frame]/D:.2f} right: {shin_length_right[frame]/D:.2f}")
+                    print(f" Time: {t[frame]:.2f}  corner y: {corner_y} label: {label}, juggle streak: {juggle_streak}")
             elif label in ["left_wrist", "right_wrist"]:
                 juggle_streak = 0
             last_corner = frame
