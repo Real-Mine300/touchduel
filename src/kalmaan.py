@@ -8,7 +8,7 @@ import numpy as np
 from collections import Counter
 
 
-video_path = "recordings/Home_1.mov"
+video_path = "recordings/Home_1.MOV"
 stem = os.path.splitext(os.path.basename(video_path))[0]
 output_path = f"outputs/touch_pose_{stem}.mp4"
 cap = cv2.VideoCapture(video_path)
@@ -43,36 +43,7 @@ with open(proximity_file.name, mode='r', newline='', encoding='utf-8') as file:
         for header in reader.fieldnames:
             data[header].append(row[header])
 
-
-t = np.array(data['t'])
-instep_left_x = np.array(data['instep_l_x'])
-instep_left_y = np.array(data['instep_l_y'])
-instep_right_x = np.array(data['instep_r_x'])
-instep_right_y = np.array(data['instep_r_y'])
-knee_left_x = np.array(data['knee_l_x'])
-knee_left_y = np.array(data['knee_l_y'])
-knee_right_x = np.array(data['knee_r_x'])
-knee_right_y = np.array(data['knee_r_y'])
-ankle_left_x = np.array(data['ankle_l_x'])
-ankle_left_y = np.array(data['ankle_l_y'])
-ankle_right_x = np.array(data['ankle_r_x'])
-ankle_right_y = np.array(data['ankle_r_y'])
-wrist_left_x = np.array(data['wrist_l_x'])
-wrist_left_y = np.array(data['wrist_l_y'])
-wrist_right_x = np.array(data['wrist_r_x'])
-wrist_right_y = np.array(data['wrist_r_y'])
-ball_x = np.array(data['ball_x'])
-ball_y = np.array(data['ball_y'])
-size_x = np.array(data['size_x'])
-size_y = np.array(data['size_y'])
-conf = np.array(data['conf'])
-cam_dx = np.array(cam_dx_list, dtype=float)
-cam_dy = np.array(cam_dy_list, dtype=float)
-step_x = np.nan_to_num(cam_dx, nan=0.0)
-step_y = np.nan_to_num(cam_dy, nan=0.0)
-cam_pos_x = np.cumsum(step_x)
-cam_pos_y = np.cumsum(step_y)
-touch = np.array(data['touch'])
+aqwedftghuiol = int(36.27*fps)
 
 t = np.array([float(v) for v in data["t"]], dtype=float)
 
@@ -110,6 +81,36 @@ conf = np.array([np.nan if v in ("", None) else float(v) for v in data["conf"]],
 
 #clean removed for now
 
+#unswap
+def unswap_legs(flx, fly, frx, fry, klx, kly, krx, kry):
+    flx, fly, frx, fry = flx.copy(), fly.copy(), frx.copy(), fry.copy()
+    klx, kly, krx, kry = klx.copy(), kly.copy(), krx.copy(), kry.copy()
+
+    def d(ax, ay, bx, by, i, j):
+        return np.hypot(ax[i] - bx[j], ay[i] - by[j])
+
+    for i in range(1, len(flx)):
+        if not np.isfinite([flx[i], frx[i], flx[i - 1], frx[i - 1],
+                            klx[i], krx[i], klx[i - 1], krx[i - 1]]).all():
+            continue
+        keep = (d(flx, fly, flx, fly, i, i - 1) +
+                d(frx, fry, frx, fry, i, i - 1) +
+                d(klx, kly, klx, kly, i, i - 1) +
+                d(krx, kry, krx, kry, i, i - 1))
+        swap = (d(frx, fry, flx, fly, i, i - 1) +
+                d(flx, fly, frx, fry, i, i - 1) +
+                d(krx, kry, klx, kly, i, i - 1) +
+                d(klx, kly, krx, kry, i, i - 1))
+        # hysteresis: only flip if swap is clearly cheaper (real leg-cross is gradual)
+        if swap < 0.6 * keep:
+            flx[i], frx[i] = frx[i], flx[i]
+            fly[i], fry[i] = fry[i], fly[i]
+            klx[i], krx[i] = krx[i], klx[i]
+            kly[i], kry[i] = kry[i], kly[i]
+    return flx, fly, frx, fry, klx, kly, krx, kry
+
+#unswap_legs(instep_left_x, instep_right_x, instep)
+
 # filling in + predictions
 filled_in_frames = max(1, round(fps * 0.25))
 gap_start = None
@@ -136,8 +137,7 @@ for q,r,l in gaps:
 #print(sorted(kalman_frames))
 #print(size_y[141:148])
 kf = cv2.KalmanFilter(4,2)
-kf.measurementMatrix = np.array([[1, 0, 0, 0],
-                                 [0, 1, 0, 0]], np.float32)
+kf.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
 kf.measurementNoiseCov = np.eye(2,dtype=np.float32) * 10
 kf.processNoiseCov = np.diag([1, 1, 10000, 10000]).astype(np.float32)
 #print(kf.measurementNoiseCov)
@@ -222,6 +222,23 @@ smoothed_proximity_wrist = np.convolve(proximity['wrist'], np.ones(smoothing_win
 smoothed_proximity_shoulders = np.convolve(proximity['shoulders'], np.ones(smoothing_window)/smoothing_window, mode='valid')
 smoothed_proximity_hip = np.convolve(proximity['hip'], np.ones(smoothing_window)/smoothing_window, mode='valid')
 
+for i in range(aqwedftghuiol - 5, aqwedftghuiol + 6):
+    print(f"\nFrame {i} (raw):")
+    print(
+        f"fl: {instep_left_x[i]:.2f}, {instep_left_y[i]:.2f}; "
+        f"fr: {instep_right_x[i]:.2f}, {instep_right_y[i]:.2f}; "
+        f"kl: {knee_left_x[i]:.2f}, {knee_left_y[i]:.2f}; "
+        f"kr: {knee_right_x[i]:.2f}, {knee_right_y[i]:.2f}"
+    )
+
+    print(f"Frame {i} (smoothed):")
+    print(
+        f"fl: {smoothed_instep_left_x[i]:.2f}, {smoothed_instep_left_y[i]:.2f}; "
+        f"fr: {smoothed_instep_right_x[i]:.2f}, {smoothed_instep_right_y[i]:.2f}; "
+        f"kl: {smoothed_knee_left_x[i]:.2f}, {smoothed_knee_left_y[i]:.2f}; "
+        f"kr: {smoothed_knee_right_x[i]:.2f}, {smoothed_knee_right_y[i]:.2f}"
+    )
+    
 # make it cartesian
 cartesian_instep_left_y = np.array([(height - 1) - smoothed_instep_left_y[i] for i in range(len(smoothed_instep_left_y))])
 cartesian_instep_right_y = np.array([(height - 1) - smoothed_instep_right_y[i] for i in range(len(smoothed_instep_right_y))])
@@ -264,9 +281,30 @@ shin_length_right = np.hypot(
     smoothed_instep_right_x - smoothed_knee_right_x,
     cartesian_instep_right_y - cartesian_knee_right_y,
 )
-hand = np.array([11.81,12.34,13.11,13.71,19.32,19.81,20.24,20.78,27.96,28.38,28.76,
-                 36.54,36.96,37.51,38.23,38.70,48.36,48.80,61.35,61.79,62.22,62.72,63.15,
-                 68.90,69.59,70.05,79.40,79.84,80.24,87.62,93.81,94.28,94.75,95.65,100.05])
+
+xbd_t = 1.0
+h_rcbd = 1.5
+
+def rescue_votes(frame, D, fps):
+    vx, vy = velocity_ball_x, velocity_ball_y
+    bef = slice(max(0, frame - 3), frame)
+    aft = slice(frame + 1, frame + 4)
+    bx0, bx1, by0, by1 = vx[bef], vx[aft], vy[bef], vy[aft]
+    bx0, bx1 = bx0[np.isfinite(bx0)], bx1[np.isfinite(bx1)]
+    by0, by1 = by0[np.isfinite(by0)], by1[np.isfinite(by1)]
+    if min(len(bx0), len(bx1), len(by0), len(by1)) == 0:
+        return 0, None, None, None
+
+    dx = abs(bx1.mean() - bx0.mean()) / D
+    v1 = dx > xbd_t
+
+    # 2: speed ratio (bounce is ~0.6-0.8)
+    r = abs(by1.mean()) / max(abs(by0.mean()), 1e-6)
+    v2 = r < 0.6 or r > 0.8
+
+    return int(v1) + int(v2), dx, r, h 
+
+hand = np.array([])
 GATES = ["conf/NaN D", "teleport", "4 finite vel", "down_to_up", "rise<0.8",
          "too soon", "label/dist", "shin", "foot_moving", "COUNTED"]
 reached = {}
@@ -304,13 +342,14 @@ last_right_wrist_x = None
 last_right_wrist_y = None
 juggles = []
 streaks = []
+last_missing_frame = -999
 
 for frame in range(len(t) - 2 ):
     # debug/preconditioning
     if frame == 0: continue
     #if t[frame] < 19.6: continue
     #if t[frame] > 30.4: continue
-    mark(frame, 0)
+    #mark(frame, 0)
 
 
     # missing ball
@@ -328,12 +367,12 @@ for frame in range(len(t) - 2 ):
         missing = 0
 
     # teleport
-    mark(frame, 1)
+    #mark(frame, 1)
     k_jump_y = abs(cartesian_ball_y[frame] - cartesian_ball_y[frame - 1]) / D
     k_jump_x = abs(smoothed_ball_x[frame] - smoothed_ball_x[frame - 1]) / D 
     k_jump_d = abs(D - smoothed_size_y[frame - 1]) / D
     k_jump_pos_thresh = 100 #.65 but 100 for testing
-    k_jump_d_thresh = 100 # found .15 but 
+    k_jump_d_thresh = 1000.2 # found .15 but 
     if k_jump_x > k_jump_pos_thresh or k_jump_y > k_jump_pos_thresh or k_jump_d > k_jump_d_thresh:
         velocity_ball_y[frame] = np.nan
         velocity_ball_y[frame - 1] = np.nan
@@ -378,14 +417,15 @@ for frame in range(len(t) - 2 ):
             last_right_wrist_frame = frame
 
     # corners
-    mark(frame, 2)
+    #mark(frame, 2)
     if frame < 2 or frame + 1 >= len(velocity_ball_y):
         continue
-    mark(frame, 3)
-    for h in [19.32, 27.96, 28.38, 36.54, 79.40]:
-        if abs(t[frame] + 0.1 - h) < 0.1:
-            print(f"{h:.2f} t={t[frame]:.2f} vy={velocity_ball_y[frame-2:frame+2]}")
+    #mark(frame, 3)
+    for h in [13.11, 20.24, 20.78, 28.76, 37.51, 38.70, 62.22, 63.15, 79.84, 80.24, 87.62, 95.65]:
+        if abs(t[frame] + 0.1 - h) < 0.25:
+            print(f"{h:.2f} t={t[frame]:.2f} vy={velocity_ball_y[frame-2:frame+2]} conf{conf[frame-2:frame+2]}")
     if not (np.isfinite(velocity_ball_y[frame]) and np.isfinite(velocity_ball_y[frame - 1]) and np.isfinite(velocity_ball_y[frame + 1]) and np.isfinite(velocity_ball_y[frame - 2])):
+        last_missing_frame = frame
         continue
     bounce = False
     juggle = False
@@ -396,12 +436,12 @@ for frame in range(len(t) - 2 ):
     down_to_up = velocity_ball_y[frame - 1] <= 0 and velocity_ball_y[frame + 1] > 0 and velocity_ball_y[frame - 2] < 0
     if down_to_up:
         rise = velocity_ball_y[frame + 1] / D
-        mark(frame, 4)
+        #mark(frame, 4)
         if rise < 0.8:
             continue
-        mark(frame, 5)
-        if frame - last_corner > round(0.15 * fps):
-            mark(frame, 6)
+        #mark(frame, 5)
+        if frame - last_corner > round(0.33 * fps):
+            #mark(frame, 6)
             recent = round(0.15 * fps)
             label = "unknown"
             best = None
@@ -441,14 +481,14 @@ for frame in range(len(t) - 2 ):
             if label in ["left_foot", "right_foot", "left_knee", "right_knee"] and best <= 1.0 * np.fmax(shin_length_left[frame], shin_length_right[frame]):
                 # bounces
                 # narrowning bounces
-                mark(frame, 7)
+                #mark(frame, 7)
 
                 foot_moving = False
                 if min(shin_length_left[frame]/D, shin_length_right[frame]/D) < .7:
                     juggle_streak = 0 
                     print(f"time: {t[frame]:.2f}, shin: {min(shin_length_left[frame]/D, shin_length_right[frame]/D) < .7}")
                 else:
-                    mark(frame, 8)
+                    #mark(frame, 8)
                     look_ahead = int(round(0.2 * fps))
                     alpha = frame - 1
                     beta = min(alpha + look_ahead, len(velocity_ball_y))
@@ -456,6 +496,7 @@ for frame in range(len(t) - 2 ):
                     alpha = max(0, frame - half_window)
                     beta = min(frame + half_window + 1, len(velocity_ball_y))
                     foot_moving = False
+                    votes = 0
 
                     if label == "left_foot":
                         fx = velocity_instep_left_x[alpha:beta]
@@ -467,43 +508,64 @@ for frame in range(len(t) - 2 ):
                         fx, fy = None, None
                         print(f"time: {t[frame]:.2f}, label: {label}")
                     if fx is not None:
+                        
                         bx = velocity_ball_x[alpha:beta]
                         by = velocity_ball_y[alpha:beta]
                         ok = np.all([np.isfinite(fx), np.isfinite(fy), np.isfinite(bx), np.isfinite(by), (by > 0)], axis=0)
                         if ok.any():
                             dot = fx * bx + fy * by
                             ratio = np.abs(fy / by)
-                            good = ok & (dot > 0) & (ratio < 10.0)
+                            mean_vy_before = np.mean(np.abs(velocity_ball_y[alpha:frame])) if frame > alpha else 0.0
+                            velocity_ratio = mean_vy_before / D
+                            min_v_threshold = 6.7
+
+                            good = ok & (dot > 0) & (ratio < 10)
                             meeting = (fy < 0) & (by > 0)
                             head_on = dot[0] < 0   # or: fy[0] * by[0] < 0 for y-only
 
-                            foot_moving = (meeting.any() or good.any()) and head_on
+                            foot_moving = (meeting.any() or good.any()) and head_on and fy[0]*by[0] < 0
 
                             if not foot_moving:
                                 print(f"Time: {t[frame]:.2f}, dot: {dot}, meeting: {meeting}, head_on: {head_on}")
                         else:
                             print(f"Time: {t[frame]:.2f}, ok: {ok}")
-
-                    if foot_moving:
-                        juggle = False
-                        point = 1 # 0 later 1 for testing
-                        # point 1 horizontal jump
-
-                        # point 
-
-                        if point > 0:
-                            juggle = True
+                        votes, dx, r, h = rescue_votes(frame, D, fps)
+                        time_since_last_corner = (frame - last_corner) / fps if last_corner != -1 else float('inf')
+                        
+                        if foot_moving:
+                            juggle = True 
+                        elif votes >=2:
+                            print(f"RESCUE EVAL? t={t[frame]:.2f} dt_corner={time_since_last_corner:.2f}s votes={votes} dx={dx} ratio={r:.2f} h={h}")
+                            if r < 50.0 and time_since_last_corner >= (round(0.33 * fps) / fps):
+                                juggle = True
+                                print(f"  -> RESCUE ACCEPTED")
+                            else:
+                                juggle_streak = 0
+                                print(f"  -> RESCUE REJECTED (ratio or gap condition failed)")
+                        else:
+                            juggle_streak = 0
                     else:
                         juggle_streak = 0
                     if juggle:
-                        mark(frame, 9)
-                        juggle_streak += 1
-                        last_juggle_time = t[frame]
-                        juggle_count += 1 # temp count for ease
-                        juggles.append(frame + 1)
-                        streaks.append(juggle_streak)
-                        print(f" Time: {t[frame]:.2f}  corner y: {corner_y} label: {label}, juggle streak: {juggle_streak}")
-                    
+                        ground = np.nanmin([cartesian_instep_left_y[frame], cartesian_instep_right_y[frame]])
+                        h_b = (cartesian_ball_y[frame] - D/2 - ground) / D        # ball bottom above planted foot
+                        vx_b = np.nanmean(np.abs(velocity_ball_x[max(0, frame-3):frame]))
+                        vy_b = np.nanmean(np.abs(velocity_ball_y[max(0, frame-3):frame]))
+                        side = vx_b / max(vy_b, 1e-6)                             # >1 means ball is moving sideways
+                        near_k = any((frame + k) in kalman_frames for k in range(-3, 4))
+                        recovering = frame - last_missing_frame < round(0.5 * fps)
+                        print(f"FEAT t={t[frame]:.2f} h_b={h_b:.2f} side={side:.2f} near_k={near_k} recovering={recovering}")
+                        if (h_b < -0.3 or side > 6):
+                            juggle = False
+                            juggle_streak = 0
+                        else:
+                            juggle_streak += 1
+                            last_juggle_time = t[frame]
+                            juggle_count += 1
+                            juggles.append(frame + 1)
+                            streaks.append(juggle_streak)
+                            print(f" Time: {t[frame]:.2f}  corner y: {corner_y} label: {label}, juggle streak: {juggle_streak}")
+
             elif label in ["left_wrist", "right_wrist"]:
                 print(f"time: {t[frame]:.2f}, label: {label}")
                 juggle_streak = 0

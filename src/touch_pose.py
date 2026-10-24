@@ -6,7 +6,7 @@ import csv
 import numpy as np
 
 
-video_path = "recordings/Rain_3.mov"
+video_path = "recordings/Home_1.mov"
 stem = os.path.splitext(os.path.basename(video_path))[0]
 output_path = f"outputs/touch_pose_{stem}.mp4"
 cap = cv2.VideoCapture(video_path)

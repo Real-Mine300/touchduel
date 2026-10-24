@@ -1,3 +1,4 @@
+from math import isfinite
 import os
 import cv2
 import mediapipe as mp
@@ -6,7 +7,6 @@ import csv
 import numpy as np
 import json
 import sys
-
 
 os.makedirs("outputs", exist_ok=True)
 
@@ -54,6 +54,61 @@ frame_number = 0
 n_frames_est = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 pose_lm = np.full((n_frames_est, 33, 4), np.nan, dtype=np.float32)
+
+FACE = [(1, 2), (3, 4), (5, 6), (7, 8), (9, 10)]
+ARMS = [(11, 12), (13, 14), (15, 16), (17, 18), (19, 20), (21, 22)]
+LEGS = [(23, 24), (25, 26), (27, 28), (29, 30), (31, 32)]  # hips..toes
+
+def repair_pose_lr(pose_lm, width, height, ratio=0.45):
+    """pose_lm: (N, 33, 4) normalized x,y,z,vis. Edits in place, returns it."""
+    n = pose_lm.shape[0]
+    out = pose_lm.copy()
+
+    def pair_cost(i, j, pairs):
+        cost = 0.0
+        used = 0
+        for L, R in pairs:
+            if not (np.isfinite(out[j, L, 0]) and np.isfinite(out[i, L, 0])
+                    and np.isfinite(out[j, R, 0]) and np.isfinite(out[i, R, 0])):
+                continue
+
+            def xy(frame, idx):
+                return out[frame, idx, 0] * width, out[frame, idx, 1] * height
+            xL, yL = xy(i, L)
+            xR, yR = xy(i, R)
+            pL, qL = xy(j, L)
+            pR, qR = xy(j, R)
+            keep = np.hypot(xL - pL, yL - qL) + np.hypot(xR - pR, yR - qR)
+            swap = np.hypot(xR - pL, yR - qL) + np.hypot(xL - pR, yL - qR)
+            cost += swap - keep 
+            used += 1
+        return cost, used
+
+    def swap_pairs(i, pairs):
+        for L, R in pairs:
+            out[i, L], out[i, R] = out[i, R].copy(), out[i, L].copy()
+
+    for i in range(1, n):
+        for group in (FACE, ARMS, LEGS):
+            delta, used = pair_cost(i, i - 1, group)
+            if used and delta < 0 and abs(delta) > (1 - ratio) * 1e-6:
+                keep = 0.0
+                swap = 0.0
+                n_used = 0
+                for L, R in group:
+                    if not (np.isfinite(out[i, L, 0]) and np.isfinite(out[i - 1, L, 0])
+                            and np.isfinite(out[i, R, 0]) and np.isfinite(out[i - 1, R, 0])):
+                        continue
+                    def xy(frame, idx):
+                        return out[frame, idx, 0] * width, out[frame, idx, 1] * height
+                    xL, yL = xy(i, L); xR, yR = xy(i, R)
+                    pL, qL = xy(i - 1, L); pR, qR = xy(i - 1, R)
+                    keep += np.hypot(xL - pL, yL - qL) + np.hypot(xR - pR, yR - qR)
+                    swap += np.hypot(xR - pL, yR - qL) + np.hypot(xL - pR, yL - qR)
+                    n_used += 1
+                if n_used and swap < ratio * keep:
+                    swap_pairs(i, group)
+    return out
 
 writer = csv.writer(proximity_file)
 writer.writerow(["t", "instep_l_x", "instep_l_y", "instep_r_x", "instep_r_y",
@@ -401,22 +456,25 @@ with mp_pose.Pose() as pose:
         frame_number += 1
 
         if frame_number % 10 == 0:
-            report(frame_number)
+            report(frame_number/2)
 
         if frame_number % max(1, int(fps)) == 0:
             print("Processed frames:", frame_number)
 
+
+
 cap.release()
-pose_lm = pose_lm[:frame_number]
-np.savez_compressed(f"outputs/cache_{stem}.npz", pose_lm=pose_lm, fps=fps, width=width, height=height)
-
-print("Finished!")
-print("Frames processed:", frame_number)
-
 if total_frames <= 0:
     total_frames = frame_number
 report(frame_number)
 
+pose_lm = pose_lm[:frame_number]
+pose_lm = repair_pose_lr(pose_lm, width, height)
+np.savez_compressed(f"outputs/cache_{stem}.npz", pose_lm=pose_lm, fps=fps, width=width, height=height)
+
+
+print("Finished!")
+print("Frames processed:", frame_number)
 print("Output:", output_path)
 print("Proximity file:", proximity_file.name)
 proximity_file.close()
@@ -439,31 +497,44 @@ cam_pos_y = np.cumsum(step_y)
 
 t = np.array([float(v) for v in data["t"]], dtype=float)
 
-# acccount for "" into nan
-instep_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["instep_l_x"]], dtype=float)
-instep_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["instep_l_y"]], dtype=float)
-instep_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["instep_r_x"]], dtype=float)
-instep_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["instep_r_y"]], dtype=float)
-knee_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["knee_l_x"]], dtype=float)
-knee_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["knee_l_y"]], dtype=float)
-knee_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["knee_r_x"]], dtype=float)
-knee_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["knee_r_y"]], dtype=float)
-ankle_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["ankle_l_x"]], dtype=float)
-ankle_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["ankle_l_y"]], dtype=float)
-ankle_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["ankle_r_x"]], dtype=float)
-ankle_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["ankle_r_y"]], dtype=float)
-wrist_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["wrist_l_x"]], dtype=float)
-wrist_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["wrist_l_y"]], dtype=float)
-wrist_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["wrist_r_x"]], dtype=float)
-wrist_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["wrist_r_y"]], dtype=float)
-shoulders_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["shoulders_l_x"]], dtype=float)
-shoulders_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["shoulders_l_y"]], dtype=float)
-shoulders_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["shoulders_r_x"]], dtype=float)
-shoulders_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["shoulders_r_y"]], dtype=float)
-hips_left_x = np.array([np.nan if v in ("", None) else float(v) for v in data["hips_l_x"]], dtype=float)
-hips_left_y = np.array([np.nan if v in ("", None) else float(v) for v in data["hips_l_y"]], dtype=float)
-hips_right_x = np.array([np.nan if v in ("", None) else float(v) for v in data["hips_r_x"]], dtype=float)
-hips_right_y = np.array([np.nan if v in ("", None) else float(v) for v in data["hips_r_y"]], dtype=float)
+# acccount for "" into nan and undo flips
+
+def pix(lm, j):
+    if not np.isfinite(lm[j, 0]):
+        return np.nan, np.nan
+    return float(lm[j, 0] * width), float(lm[j, 1] * height)
+
+N = len(pose_lm)
+ankle_left_x = np.full(N, np.nan);  ankle_left_y = np.full(N, np.nan)
+ankle_right_x = np.full(N, np.nan); ankle_right_y = np.full(N, np.nan)
+knee_left_x = np.full(N, np.nan);   knee_left_y = np.full(N, np.nan)
+knee_right_x = np.full(N, np.nan);  knee_right_y = np.full(N, np.nan)
+wrist_left_x = np.full(N, np.nan);  wrist_left_y = np.full(N, np.nan)
+wrist_right_x = np.full(N, np.nan); wrist_right_y = np.full(N, np.nan)
+shoulders_left_x = np.full(N, np.nan);  shoulders_left_y = np.full(N, np.nan)
+shoulders_right_x = np.full(N, np.nan); shoulders_right_y = np.full(N, np.nan)
+hips_left_x = np.full(N, np.nan);   hips_left_y = np.full(N, np.nan)
+hips_right_x = np.full(N, np.nan);  hips_right_y = np.full(N, np.nan)
+instep_left_x = np.full(N, np.nan); instep_left_y = np.full(N, np.nan)
+instep_right_x = np.full(N, np.nan); instep_right_y = np.full(N, np.nan)
+
+for i, lm in enumerate(pose_lm):
+    ankle_left_x[i], ankle_left_y[i] = pix(lm, 27)
+    ankle_right_x[i], ankle_right_y[i] = pix(lm, 28)
+    knee_left_x[i], knee_left_y[i] = pix(lm, 25)
+    knee_right_x[i], knee_right_y[i] = pix(lm, 26)
+    wrist_left_x[i], wrist_left_y[i] = pix(lm, 15)
+    wrist_right_x[i], wrist_right_y[i] = pix(lm, 16)
+    shoulders_left_x[i], shoulders_left_y[i] = pix(lm, 11)
+    shoulders_right_x[i], shoulders_right_y[i] = pix(lm, 12)
+    hips_left_x[i], hips_left_y[i] = pix(lm, 23)
+    hips_right_x[i], hips_right_y[i] = pix(lm, 24)
+    ltx, lty = pix(lm, 31)
+    rtx, rty = pix(lm, 32)
+    instep_left_x[i] = ankle_left_x[i] + (ltx - ankle_left_x[i]) * 0.6
+    instep_left_y[i] = ankle_left_y[i] + (lty - ankle_left_y[i]) * 0.6
+    instep_right_x[i] = ankle_right_x[i] + (rtx - ankle_right_x[i]) * 0.6
+    instep_right_y[i] = ankle_right_y[i] + (rty - ankle_right_y[i]) * 0.6
 ball_x = np.array([np.nan if v in ("", None) else float(v) for v in data["ball_x"]], dtype=float)
 ball_y = np.array([np.nan if v in ("", None) else float(v) for v in data["ball_y"]], dtype=float)
 size_x = np.array([np.nan if v in ("", None) else float(v) for v in data["size_x"]], dtype=float)
@@ -644,6 +715,39 @@ velocity_wrist_right_y = np.diff(cartesian_wrist_right_y)/dt
 velocity_ball_x = np.diff(smoothed_ball_x)/dt
 velocity_ball_y = np.diff(cartesian_ball_y)/dt
 
+#shins
+shin_length_left = np.hypot(
+    smoothed_instep_left_x - smoothed_knee_left_x,
+    cartesian_instep_left_y - cartesian_knee_left_y,
+)
+shin_length_right = np.hypot(
+    smoothed_instep_right_x - smoothed_knee_right_x,
+    cartesian_instep_right_y - cartesian_knee_right_y,
+)
+
+xbd_t = 1.0
+h_rcbd = 1.5
+
+def rescue_votes(frame, D, fps):
+    vx, vy = velocity_ball_x, velocity_ball_y
+    bef = slice(max(0, frame - 3), frame)
+    aft = slice(frame + 1, frame + 4)
+    bx0, bx1, by0, by1 = vx[bef], vx[aft], vy[bef], vy[aft]
+    bx0, bx1 = bx0[np.isfinite(bx0)], bx1[np.isfinite(bx1)]
+    by0, by1 = by0[np.isfinite(by0)], by1[np.isfinite(by1)]
+    if min(len(bx0), len(bx1), len(by0), len(by1)) == 0:
+        return 0, None, None, None
+
+    dx = abs(bx1.mean() - bx0.mean()) / D
+    v1 = dx > xbd_t
+
+    # 2: speed ratio (bounce is ~0.6-0.8)
+    r = abs(by1.mean()) / max(abs(by0.mean()), 1e-6)
+    v2 = r < 0.6 or r > 0.8
+
+    return int(v1) + int(v2), dx, r, h 
+
+hand = np.array([])
 last_juggle_time = 0
 juggle_count = 0
 apex = False
@@ -673,9 +777,10 @@ last_right_wrist_frame = -1
 last_right_wrist_x = None
 last_right_wrist_y = None
 juggles = []
+juggle_times = []
 streaks = []
 labels = []
-juggle_times = []
+last_missing_frame = -999
 
 for frame in range(len(t) - 2 ):
     # debug/preconditioning
@@ -750,8 +855,14 @@ for frame in range(len(t) - 2 ):
     # corners
     if frame < 2 or frame + 1 >= len(velocity_ball_y):
         continue
+    for h in [19.32, 27.96, 28.38, 36.54, 79.40]:
+        if abs(t[frame] + 0.1 - h) < 0.1:
+            print(f"{h:.2f} t={t[frame]:.2f} vy={velocity_ball_y[frame-2:frame+2]}")
     if not (np.isfinite(velocity_ball_y[frame]) and np.isfinite(velocity_ball_y[frame - 1]) and np.isfinite(velocity_ball_y[frame + 1]) and np.isfinite(velocity_ball_y[frame - 2])):
+        last_missing_frame = frame
         continue
+    bounce = False
+    juggle = False
     bend_y = velocity_ball_y[frame] - velocity_ball_y[frame - 1]
     bend_before_y = velocity_ball_y[frame - 1] - velocity_ball_y[frame - 2]
     bend_after_y = velocity_ball_y[frame + 1] - velocity_ball_y[frame]
@@ -761,53 +872,140 @@ for frame in range(len(t) - 2 ):
         rise = velocity_ball_y[frame + 1] / D
         if rise < 0.8:
             continue
-        if frame - last_corner > round(0.15 * fps):
+        if frame - last_corner > round(0.33 * fps):
             recent = round(0.15 * fps)
             label = "unknown"
             best = None
             if last_left_foot_frame != -1 and frame - last_left_foot_frame < recent:
-                sigmadistance = np.hypot(last_left_foot_x - smoothed_ball_x[frame], last_left_foot_y - cartesian_ball_y[frame])
+                sigmadistance = np.hypot(last_left_foot_x - smoothed_ball_x[frame], last_left_foot_y - cartesian_ball_y[frame]) * 0.90
                 if best is None or sigmadistance < best:
                     best = sigmadistance
                     label = "left_foot"
             if last_right_foot_frame != -1 and frame - last_right_foot_frame < recent:
-                sigmadistance = np.hypot(last_right_foot_x - smoothed_ball_x[frame], last_right_foot_y - cartesian_ball_y[frame])
+                sigmadistance = np.hypot(last_right_foot_x - smoothed_ball_x[frame], last_right_foot_y - cartesian_ball_y[frame]) * 0.90
                 if best is None or sigmadistance < best:
                     best = sigmadistance
                     label = "right_foot"
-            if last_left_knee_frame != -1 and frame - last_left_knee_frame < recent:
-                sigmadistance = np.hypot(last_left_knee_x - smoothed_ball_x[frame], last_left_knee_y - cartesian_ball_y[frame])
-                if best is None or sigmadistance < best:
-                    best = sigmadistance
-                    label = "left_knee"
-            if last_right_knee_frame != -1 and frame - last_right_knee_frame < recent:
-                sigmadistance = np.hypot(last_right_knee_x - smoothed_ball_x[frame], last_right_knee_y - cartesian_ball_y[frame])
-                if best is None or sigmadistance < best:
-                    best = sigmadistance
-                    label = "right_knee"
-            if last_left_wrist_frame != -1 and frame - last_left_wrist_frame < recent:
-                sigmadistance = np.hypot(last_left_wrist_x - smoothed_ball_x[frame], last_left_wrist_y - cartesian_ball_y[frame])
-                if best is not None and sigmadistance < best:
-                    best = sigmadistance
-                    label = "left_wrist"
-            if last_right_wrist_frame != -1 and frame - last_right_wrist_frame < recent:
-                sigmadistance = np.hypot(last_right_wrist_x - smoothed_ball_x[frame], last_right_wrist_y - cartesian_ball_y[frame])
-                if best is not None and sigmadistance < best:
-                    best = sigmadistance
-                    label = "right_wrist"
-            if label in ["left_foot", "right_foot", "left_knee", "right_knee"]:
-                juggle_streak += 1
-                last_juggle_time = t[frame]
-                juggle_count += 1 # temp count for ease
-                juggles.append(frame + 1)          # frame index (the overlay pass needs this)
-                juggle_times.append(t[frame])      # seconds (for the JUGGLES output)
-                streaks.append(juggle_streak)
-                labels.append(label)
-            elif label != "unknown":
+            if label == "unknown":
+                if last_left_knee_frame != -1 and frame - last_left_knee_frame < recent:
+                    sigmadistance = np.hypot(last_left_knee_x - smoothed_ball_x[frame], last_left_knee_y - cartesian_ball_y[frame])
+                    if best is None or sigmadistance < best:
+                        best = sigmadistance
+                        label = "left_knee"
+                if last_right_knee_frame != -1 and frame - last_right_knee_frame < recent:
+                    sigmadistance = np.hypot(last_right_knee_x - smoothed_ball_x[frame], last_right_knee_y - cartesian_ball_y[frame])
+                    if best is None or sigmadistance < best:
+                        best = sigmadistance
+                        label = "right_knee"
+                if last_left_wrist_frame != -1 and frame - last_left_wrist_frame < recent:
+                    sigmadistance = np.hypot(last_left_wrist_x - smoothed_ball_x[frame], last_left_wrist_y - cartesian_ball_y[frame])
+                    if best is None or sigmadistance < best:
+                        best = sigmadistance
+                        label = "left_wrist"
+                if last_right_wrist_frame != -1 and frame - last_right_wrist_frame < recent:
+                    sigmadistance = np.hypot(last_right_wrist_x - smoothed_ball_x[frame], last_right_wrist_y - cartesian_ball_y[frame])
+                    if best is None or sigmadistance < best:
+                        best = sigmadistance
+                        label = "right_wrist"
+            
+            #dist check
+            if label in ["left_foot", "right_foot", "left_knee", "right_knee"] and best <= 1.0 * np.fmax(shin_length_left[frame], shin_length_right[frame]):
+                # bounces
+                # narrowning bounces
+
+                foot_moving = False
+                if min(shin_length_left[frame]/D, shin_length_right[frame]/D) < .7:
+                    juggle_streak = 0 
+                    #print(f"time: {t[frame]:.2f}, shin: {min(shin_length_left[frame]/D, shin_length_right[frame]/D) < .7}")
+                else:
+                    look_ahead = int(round(0.2 * fps))
+                    alpha = frame - 1
+                    beta = min(alpha + look_ahead, len(velocity_ball_y))
+                    half_window = max(1, int(round(0.05 * fps))) #normally .05 but to +.1 i set it at 
+                    alpha = max(0, frame - half_window)
+                    beta = min(frame + half_window + 1, len(velocity_ball_y))
+                    foot_moving = False
+                    votes = 0
+
+                    if label == "left_foot":
+                        fx = velocity_instep_left_x[alpha:beta]
+                        fy = velocity_instep_left_y[alpha:beta]
+                    elif label == "right_foot":
+                        fx = velocity_instep_right_x[alpha:beta]
+                        fy = velocity_instep_right_y[alpha:beta]
+                    else:
+                        fx, fy = None, None
+                        #print(f"time: {t[frame]:.2f}, label: {label}")
+                    if fx is not None:
+                        
+                        bx = velocity_ball_x[alpha:beta]
+                        by = velocity_ball_y[alpha:beta]
+                        ok = np.all([np.isfinite(fx), np.isfinite(fy), np.isfinite(bx), np.isfinite(by), (by > 0)], axis=0)
+                        if ok.any():
+                            dot = fx * bx + fy * by
+                            ratio = np.abs(fy / by)
+                            mean_vy_before = np.mean(np.abs(velocity_ball_y[alpha:frame])) if frame > alpha else 0.0
+                            velocity_ratio = mean_vy_before / D
+                            min_v_threshold = 6.7
+
+                            good = ok & (dot > 0) & (ratio < 10)
+                            meeting = (fy < 0) & (by > 0)
+                            head_on = dot[0] < 0   # or: fy[0] * by[0] < 0 for y-only
+
+                            foot_moving = (meeting.any() or good.any()) and head_on and fy[0]*by[0] < 0
+
+                            if not foot_moving:
+                                pass
+                                #print(f"Time: {t[frame]:.2f}, dot: {dot}, meeting: {meeting}, head_on: {head_on}")
+                        else:
+                            pass
+                            #print(f"Time: {t[frame]:.2f}, ok: {ok}")
+                        votes, dx, r, h = rescue_votes(frame, D, fps)
+                        time_since_last_corner = (frame - last_corner) / fps if last_corner != -1 else float('inf')
+                        
+                        if foot_moving:
+                            juggle = True 
+                        elif votes >=2:
+                            #print(f"RESCUE EVAL? t={t[frame]:.2f} dt_corner={time_since_last_corner:.2f}s votes={votes} dx={dx} ratio={r:.2f} h={h}")
+                            if r < 50.0 and time_since_last_corner >= (round(0.33 * fps) / fps):
+                                juggle = True
+                                #print(f"  -> RESCUE ACCEPTED")
+                            else:
+                                juggle_streak = 0
+                                #print(f"  -> RESCUE REJECTED (ratio or gap condition failed)")
+                        else:
+                            juggle_streak = 0
+                    else:
+                        juggle_streak = 0
+                    if juggle:
+                        ground = np.nanmin([cartesian_instep_left_y[frame], cartesian_instep_right_y[frame]])
+                        h_b = (cartesian_ball_y[frame] - D/2 - ground) / D        # ball bottom above planted foot
+                        vx_b = np.nanmean(np.abs(velocity_ball_x[max(0, frame-3):frame]))
+                        vy_b = np.nanmean(np.abs(velocity_ball_y[max(0, frame-3):frame]))
+                        side = vx_b / max(vy_b, 1e-6)                             # >1 means ball is moving sideways
+                        near_k = any((frame + k) in kalman_frames for k in range(-3, 4))
+                        recovering = frame - last_missing_frame < round(0.5 * fps)
+                        #print(f"FEAT t={t[frame]:.2f} h_b={h_b:.2f} side={side:.2f} near_k={near_k} recovering={recovering}")
+                        if (h_b < -0.3 or side > 6):
+                            juggle = False
+                            juggle_streak = 0
+                        else:
+                            juggle_streak += 1
+                            last_juggle_time = t[frame]
+                            juggle_count += 1
+                            juggle_times.append(t[frame + 1])
+                            juggles.append(frame + 1)
+                            streaks.append(juggle_streak)
+                            labels.append(label)
+                            print(f" Time: {t[frame]:.2f}  corner y: {corner_y} label: {label}, juggle streak: {juggle_streak}")
+
+            elif label in ["left_wrist", "right_wrist"]:
+                #print(f"time: {t[frame]:.2f}, label: {label}")
                 juggle_streak = 0
-            print(f" Time: {t[frame]:.2f}  corner y: {corner_y} label: {label}, juggle streak: {juggle_streak}")
+            else:
+                pass
+                #print(f"time: {t[frame]:.2f}, label: {label}, best check: {best <= 1.0 * np.fmax(shin_length_left[frame], shin_length_right[frame])}, best: {best}, shin: {np.fmax(shin_length_left[frame], shin_length_right[frame]):.2f}")
             last_corner = frame
-        continue
 
 print(juggle_count)
 
