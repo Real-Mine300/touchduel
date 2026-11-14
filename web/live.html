@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Touchduel · Live</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .live-wrap { max-width: 900px; margin: 0 auto; }
+    .live-video { position: relative; overflow: hidden; border-radius: 14px; background: #111827; aspect-ratio: 16 / 9; }
+    .live-video video { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .live-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+    .live-stat { padding: 14px; border: 1px solid #d1d5db; border-radius: 12px; }
+    .live-stat .value { display: block; font-size: clamp(1.8rem, 5vw, 2.6rem); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .live-stat .caption { display: block; margin-top: 5px; color: #6b7280; font-size: .85rem; }
+    .live-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+    .live-status { min-height: 1.5em; color: #4b5563; }
+    .live-note { font-size: .9rem; color: #6b7280; }
+    .live-error { color: #b91c1c; }
+    @media (max-width: 560px) {
+      .live-stats { gap: 7px; }
+      .live-stat { padding: 10px 8px; }
+      .live-stat .caption { font-size: .72rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wide live-wrap">
+    <h1>Touchduel Live</h1>
+    <p class="sub">Real-time juggling counter using the camera on this device. <a href="index.html">Video analyzer</a> · <a href="duel.html">Duel</a></p>
+
+    <div class="live-video">
+      <video id="preview" muted playsinline autoplay></video>
+    </div>
+
+    <section class="live-stats" aria-label="Live statistics">
+      <div class="live-stat">
+        <span class="value" id="count">0</span>
+        <span class="caption">Juggles</span>
+      </div>
+      <div class="live-stat">
+        <span class="value" id="streak">0</span>
+        <span class="caption">Current streak</span>
+      </div>
+      <div class="live-stat">
+        <span class="value" id="best">0</span>
+        <span class="caption">Best streak</span>
+      </div>
+    </section>
+
+    <p id="last-part" class="live-status">Last detected part: —</p>
+    <p id="status" class="live-status" role="status" aria-live="polite">Camera is not connected.</p>
+    <p id="error" class="live-status live-error" role="alert" hidden></p>
+
+    <div class="live-actions">
+      <button id="start" type="button">Start live tracking</button>
+      <button id="stop" type="button" disabled>Stop</button>
+      <button id="reset" type="button">Reset display</button>
+    </div>
+
+    <p class="live-note">Use a stable camera position with your feet and knees visible. Camera access requires HTTPS on phones, except when testing on localhost. Keep this page open while tracking.</p>
+    <label class="server">
+      Processing server
+      <input id="api" type="text" spellcheck="false" placeholder="blank if this page is already on the server">
+    </label>
+  </main>
+
+  <canvas id="frame-canvas" hidden></canvas>
+  <script src="live.js"></script>
+</body>
+</html>

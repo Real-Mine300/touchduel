@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Touchduel · Duel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="duel.css">
+</head>
+<body>
+  <main class="wide">
+    <h1>Touchduel</h1>
+    <p class="sub">1v1 juggling. 30 seconds each. <a href="index.html">Single analyzer</a></p>
+    <p id="seed-note" class="note" hidden>Seed mode: clips you upload here join the opponent pool.</p>
+
+    <section id="menu">
+      <div class="row">
+        <button id="create" type="button">Create room</button>
+        <span class="or">or</span>
+        <input id="code" type="text" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" spellcheck="false">
+        <button id="join" type="button">Join</button>
+      </div>
+      <div class="row">
+        <label class="file">
+          <input id="cmp-a" type="file" accept="video/*">
+          <span id="cmp-a-name">Clip A</span>
+        </label>
+        <label class="file">
+          <input id="cmp-b" type="file" accept="video/*">
+          <span id="cmp-b-name">Clip B</span>
+        </label>
+        <button id="cmp-go" type="button" disabled>Compare side by side</button>
+      </div>
+      <div class="row">
+        <label class="file">
+          <input id="solo-file" type="file" accept="video/*">
+          <span id="solo-name">Solo: pick a video</span>
+        </label>
+        <button id="solo-go" type="button" disabled>Run vs random opponent</button>
+      </div>
+    </section>
+
+    <section id="lobby" hidden>
+      <p class="roomcode">Room code <strong id="room-code"></strong></p>
+      <p id="lobby-status"></p>
+      <p id="lobby-note" class="note" hidden>In-page recording needs https, so use your camera app: both of you start recording together and record 30 seconds.</p>
+      <div id="cam" class="cam" hidden>
+        <video id="preview" muted playsinline></video>
+        <div id="countdown"></div>
+      </div>
+      <div class="row">
+        <button id="cam-open" type="button">Open camera</button>
+        <button id="ready" type="button" hidden>I'm ready</button>
+      </div>
+      <div id="fallback" hidden>
+        <label class="file">
+          <input id="cap" type="file" accept="video/*" capture="environment">
+          <span>Record 30s with camera app</span>
+        </label>
+      </div>
+    </section>
+
+    <section id="work" hidden>
+      <div class="bars">
+        <div>
+          <p id="label-me">You</p>
+          <div class="track"><div id="fill-me" class="fill"></div></div>
+          <p id="text-me" class="small">Waiting…</p>
+        </div>
+        <div>
+          <p id="label-opp">Opponent</p>
+          <div class="track"><div id="fill-opp" class="fill"></div></div>
+          <p id="text-opp" class="small">Waiting…</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="arena" hidden>
+      <p id="banner" hidden></p>
+      <div class="duel">
+        <div class="side">
+          <h2 id="name-me">You</h2>
+          <div class="stage">
+            <video id="vid-me" muted playsinline preload="auto"></video>
+            <div class="hud">
+              <span class="big" id="hud-count-me">0</span> <span class="lab">juggles</span>
+              <span class="small">streak <b id="hud-streak-me">0</b> · best <b id="hud-best-me">0</b></span>
+            </div>
+          </div>
+          <dl id="final-me" class="final" hidden></dl>
+        </div>
+        <div class="side">
+          <h2 id="name-opp">Opponent</h2>
+          <div class="stage">
+            <video id="vid-opp" muted playsinline preload="auto"></video>
+            <div class="hud">
+              <span class="big" id="hud-count-opp">0</span> <span class="lab">juggles</span>
+              <span class="small">streak <b id="hud-streak-opp">0</b> · best <b id="hud-best-opp">0</b></span>
+            </div>
+          </div>
+          <dl id="final-opp" class="final" hidden></dl>
+        </div>
+      </div>
+      <div class="row">
+        <button id="play" type="button">Start duel</button>
+        <button id="again" type="button">New duel</button>
+      </div>
+    </section>
+
+    <p id="error" hidden></p>
+
+    <label class="server">
+      Processing server
+      <input id="api" type="text" spellcheck="false" placeholder="blank if this page is already on the server">
+    </label>
+  </main>
+  <script src="duel.js"></script>
+</body>
+</html>
