@@ -39,3 +39,14 @@ web/jobs
 .cursor/
 .cursorrules
 .cursor/
+# Additional generated model files
+output/
+output_nano/
+runs/
+*.pt
+*.pth
+
+# Local-only data
+real/
+real_timing/
+src/live_juggle.py
